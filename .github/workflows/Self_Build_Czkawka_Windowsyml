@@ -1,0 +1,37 @@
+name: 编译全套 Czkawka (CLI + Krokiet)
+
+# 手动触发
+on: workflow_dispatch
+
+jobs:
+  build-all:
+    runs-on: windows-latest
+
+    steps:
+      # 1. 准备环境 (只做一次，省时)
+      - name: 下载代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Rust 环境
+        uses: dtolnay/rust-toolchain@stable
+
+      # 2. 编译 CLI 版本
+      # 这一步编译完后，核心库已经生成好了
+      - name: 编译 CLI (命令行版)
+        run: cargo build --release --bin czkawka_cli
+
+      # 3. 编译 Krokiet GUI 版本
+      # 这一步会直接利用上一步编好的核心库，速度会快很多
+      - name: 编译 Krokiet (界面版)
+        run: cargo build --release --bin krokiet --no-default-features --features "winit_skia_opengl,winit_software"
+
+      # 4. 打包上传
+      # 这里把两个 exe 文件放在一个压缩包里给你下载
+      - name: 上传所有文件
+        uses: actions/upload-artifact@v4
+        with:
+          name: Czkawka_Windows_Full_Pack
+          path: |
+            target/release/czkawka_cli.exe
+            target/release/krokiet.exe
+          if-no-files-found: error
