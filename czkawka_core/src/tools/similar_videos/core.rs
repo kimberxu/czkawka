@@ -173,6 +173,15 @@ impl SimilarVideos {
         let tiles_size = 3;
 
         let mut command = Command::new("ffmpeg");
+        
+            // 这一段是新增的：告诉 Windows 隐藏窗口
+        #[cfg(target_family = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            command.creation_flags(0x08000000);
+        }
+        // --- 修改结束 ---    
+
         let mut command = command.arg("-threads").arg("1").arg("-i").arg(&file_entry.path);
 
         if generate_grid_instead_of_single {
