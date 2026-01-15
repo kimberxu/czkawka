@@ -1,6 +1,6 @@
 use std::path::Path;
+use std::process::Command;
 
-use ffprobe::ffprobe;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -15,7 +15,39 @@ pub struct VideoMetadata {
 
 impl VideoMetadata {
     pub fn from_path(path: &Path) -> Result<Self, String> {
-        let info = ffprobe(path).map_err(|e| format!("Failed to read video properties: {e}"))?;
+        // --- 修改开始：手动调用 ffprobe 并隐藏窗口 ---
+        let mut cmd = Command::new("ffprobe");
+        cmd.args(&[
+            "-v",
+            "quiet",
+            "-show_format",
+            "-show_streams",
+            "-print_format",
+            "json",
+        ])
+        .arg(path);
+
+        // 仅在 Windows 系统上应用隐藏窗口的标志
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            cmd.creation_flags(CREATE_NO_WINDOW);
+        }
+
+        let output = cmd.output().map_err(|e| format!("Failed to execute ffprobe: {e}"))?;
+
+        if !output.status.success() {
+            return Err(format!(
+                "ffprobe exited with error: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ));
+        }
+
+        // 使用 ffprobe crate 提供的结构体进行反序列化
+        let info: ffprobe::FfProbe = serde_json::from_slice(&output.stdout)
+            .map_err(|e| format!("Failed to parse ffprobe output: {e}"))?;
+        // --- 修改结束 ---
 
         let mut metadata = Self::default();
 
@@ -25,7 +57,11 @@ impl VideoMetadata {
             metadata.duration = Some(d);
         }
 
-        if let Some(stream) = info.streams.into_iter().find(|s| s.codec_type.as_deref() == Some("video")) {
+        if let Some(stream) = info
+            .streams
+            .into_iter()
+            .find(|s| s.codec_type.as_deref() == Some("video"))
+        {
             metadata.codec = stream.codec_name;
 
             if let Some(bit_rate_str) = stream.bit_rate.or(info.format.bit_rate)
@@ -58,7 +94,11 @@ impl VideoMetadata {
                     let mut parts = fps_str.splitn(2, '/');
                     if let (Some(n), Some(d)) = (parts.next(), parts.next()) {
                         if let (Ok(nv), Ok(dv)) = (n.parse::<f64>(), d.parse::<f64>()) {
-                            if dv != 0.0 { Some(nv / dv) } else { None }
+                            if dv != 0.0 {
+                                Some(nv / dv)
+                            } else {
+                                None
+                            }
                         } else {
                             None
                         }
