@@ -17,34 +17,34 @@ export component PopupCustomSelect inherits Rectangle {
     popup_window := PopupBase {
         width: popup_width;
         height: popup_height;
-        title_text: "Custom Selection"; // TODO: Translation
+        title_text: "自定义选择"; // TODO: Translation
         // Hide default OK button as we have custom action buttons
         enabled_ok_button: false;
         
         VerticalBox {
             LineEdit {
-                placeholder-text: "Enter text or regex...";
+                placeholder-text: "输入文本或正则表达式...";
                 text <=> text_data;
             }
             
             HorizontalBox {
                 CheckBox {
-                    text: "Regex";
+                    text: "正则";
                     checked <=> use_regex;
                 }
                 CheckBox {
-                    text: "Case Sensitive";
+                    text: "区分大小写";
                     checked <=> case_sensitive;
                 }
                 CheckBox {
-                    text: "Not In";
+                    text: "反选";
                     checked <=> not_in;
                 }
             }
 
             HorizontalBox {
                 Button {
-                    text: "Select";
+                    text: "选择";
                     enabled: text_data != "";
                     clicked => {
                         Callabler.custom_selection(text_data, use_regex, case_sensitive, not_in, true);
@@ -52,7 +52,7 @@ export component PopupCustomSelect inherits Rectangle {
                     }
                 }
                 Button {
-                    text: "Deselect";
+                    text: "取消选择";
                     enabled: text_data != "";
                     clicked => {
                         Callabler.custom_selection(text_data, use_regex, case_sensitive, not_in, false);

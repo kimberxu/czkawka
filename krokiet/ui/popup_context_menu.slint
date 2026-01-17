@@ -30,35 +30,35 @@ export component PopupContextMenu inherits Rectangle {
                 spacing: 2px;
                 
                 Button { 
-                    text: "Open File"; 
+                    text: "打开文件"; 
                     clicked => { 
                         Callabler.context_open_file(root.selected_index); 
                         popup_window.close(); 
                     } 
                 }
                 Button { 
-                    text: "Open Folder"; 
+                    text: "打开文件夹"; 
                     clicked => { 
                         Callabler.context_open_folder(root.selected_index); 
                         popup_window.close(); 
                     } 
                 }
                 Button { 
-                    text: "Select duplicates in this folder"; 
+                    text: "选择此文件夹中的重复项"; 
                     clicked => { 
                         Callabler.context_select_in_folder(root.selected_index); 
                         popup_window.close(); 
                     } 
                 }
                 Button { 
-                    text: "Select duplicates in other folders"; 
+                    text: "选择其他文件夹中的重复项"; 
                     clicked => { 
                         Callabler.context_select_other_folders(root.selected_index); 
                         popup_window.close(); 
                     } 
                 }
                 Button { 
-                    text: "Protect this folder"; 
+                    text: "保护此文件夹"; 
                     clicked => { 
                         Callabler.context_protect_folder(root.selected_index); 
                         popup_window.close(); 
