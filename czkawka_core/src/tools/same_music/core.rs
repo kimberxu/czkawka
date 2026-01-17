@@ -182,7 +182,7 @@ impl SameMusic {
                     return None;
                 }
 
-                let res = with_io_lock(Path::new(&path), || calc_fingerprint_helper(path, configuration));
+                let res = with_io_lock(Path::new(&path.clone()), || calc_fingerprint_helper(path, configuration));
                 progress_handler.increase_size(music_entry.size);
                 progress_handler.increase_items(1);
 

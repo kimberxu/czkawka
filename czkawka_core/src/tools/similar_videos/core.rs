@@ -398,7 +398,7 @@ impl SimilarVideos {
         let generate_grid_instead_of_single = self.params.generate_thumbnail_grid_instead_of_single;
 
         let thread_number = self.get_thread_number().unwrap_or(0);
-        let create_thumbnails_closure = || {
+        let mut create_thumbnails_closure = || {
             self.similar_vectors
                 .par_iter_mut()
                 .with_max_len(2)
