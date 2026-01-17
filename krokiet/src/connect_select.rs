@@ -1,4 +1,5 @@
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
+use regex::{Regex, RegexBuilder};
 
 use crate::common::connect_i32_into_u64;
 use crate::connect_row_selection::checker::change_number_of_enabled_items;
@@ -229,7 +230,7 @@ fn select_by_custom_property(
     let text = text.as_str();
 
     let regex = if use_regex {
-        match regex::RegexBuilder::new(text).case_insensitive(!case_sensitive).build() {
+        match RegexBuilder::new(text).case_insensitive(!case_sensitive).build() {
             Ok(r) => Some(r),
             Err(_) => return (0, 0, ModelRc::new(VecModel::from(old_data))),
         }

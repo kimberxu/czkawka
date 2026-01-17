@@ -25,13 +25,13 @@ use slint::VecModel;
 
 use crate::clear_outdated_video_thumbnails::clear_outdated_video_thumbnails;
 use crate::connect_directories_changes::connect_add_remove_directories;
-use crate::connect_context_menu::connect_context_menu;
 use crate::connect_open::connect_open_items;
 use crate::connect_progress_receiver::connect_progress_gathering;
 use crate::connect_row_selection::connect_row_selections;
 use crate::connect_save::connect_save;
 use crate::connect_scan::connect_scan_button;
 use crate::connect_select::{connect_select, connect_showing_proper_select_buttons};
+use crate::connect_context_menu::connect_context_menu;
 use crate::connect_show_confirmation::connect_show_confirmation;
 use crate::connect_show_preview::connect_show_preview;
 use crate::connect_size_of_config_cache::connect_size_of_config_cache;
@@ -47,13 +47,13 @@ use crate::shared_models::SharedModels;
 mod clear_outdated_video_thumbnails;
 mod common;
 mod connect_directories_changes;
-mod connect_context_menu;
 mod connect_open;
 mod connect_progress_receiver;
 mod connect_row_selection;
 mod connect_save;
 mod connect_scan;
 mod connect_select;
+mod connect_context_menu;
 mod connect_show_confirmation;
 mod connect_show_preview;
 mod connect_size_of_config_cache;
@@ -115,7 +115,6 @@ fn main() {
     connect_open_items(&app);
     connect_progress_gathering(&app, progress_receiver);
     connect_add_remove_directories(&app);
-    connect_context_menu(&app);
     connect_show_preview(&app);
     connect_translations(&app);
     connect_changing_settings_preset(&app);
@@ -132,6 +131,7 @@ fn main() {
     connect_sort(&app);
     connect_sort_column(&app);
     connect_showing_proper_sort_buttons(&app);
+    connect_context_menu(&app);
     connect_size_of_config_cache(&app);
     connect_show_confirmation(&app);
 

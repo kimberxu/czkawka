@@ -1,7 +1,7 @@
 use std::path::Path;
 use slint::{ComponentHandle, Model};
 use crate::{Callabler, GuiState, MainWindow};
-use crate::common::ActiveTab;
+use crate::ActiveTab;
 
 pub(crate) fn connect_context_menu(app: &MainWindow) {
     let a = app.as_weak();
