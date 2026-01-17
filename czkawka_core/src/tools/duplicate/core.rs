@@ -14,7 +14,9 @@ use rayon::prelude::*;
 
 use crate::common::cache::{CACHE_DUPLICATE_VERSION, load_cache_from_file_generalized_by_size, save_cache_to_file_generalized};
 use crate::common::dir_traversal::{DirTraversalBuilder, DirTraversalResult};
+use crate::common::disk_control::with_io_lock;
 use crate::common::model::{CheckingMethod, FileEntry, HashType, ToolType, WorkContinueStatus};
+
 use crate::common::progress_data::{CurrentStage, ProgressData};
 use crate::common::progress_stop_handler::{check_if_stop_received, prepare_thread_handler_common};
 use crate::common::tool_data::{CommonData, CommonToolData};
@@ -449,7 +451,8 @@ impl DuplicateFinder {
                         if check_if_stop_received(stop_flag) {
                             return None;
                         }
-                        match hash_calculation_limit(buffer, &file_entry, check_type, PREHASHING_BUFFER_SIZE, progress_handler.size_counter()) {
+                        match with_io_lock(&file_entry.path, || hash_calculation_limit(buffer, &file_entry, check_type, PREHASHING_BUFFER_SIZE, progress_handler.size_counter())) {
+
                             Ok(hash_string) => {
                                 file_entry.hash = hash_string.clone();
                                 hashmap_with_hash.entry(hash_string).or_default().push(file_entry);
@@ -672,7 +675,8 @@ impl DuplicateFinder {
                             return None;
                         }
 
-                        match hash_calculation(buffer, &file_entry, check_type, progress_handler.size_counter(), stop_flag) {
+                        match with_io_lock(&file_entry.path, || hash_calculation(buffer, &file_entry, check_type, progress_handler.size_counter(), stop_flag)) {
+
                             Ok(hash_string) => {
                                 if let Some(hash_string) = hash_string {
                                     file_entry.hash = hash_string.clone();

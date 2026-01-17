@@ -27,7 +27,9 @@ use crate::common::cache::{CACHE_VERSION, extract_loaded_cache, load_cache_from_
 use crate::common::consts::AUDIO_FILES_EXTENSIONS;
 use crate::common::create_crash_message;
 use crate::common::dir_traversal::{DirTraversalBuilder, DirTraversalResult};
+use crate::common::disk_control::with_io_lock;
 use crate::common::model::{ToolType, WorkContinueStatus};
+
 use crate::common::progress_data::{CurrentStage, ProgressData};
 use crate::common::progress_stop_handler::{check_if_stop_received, prepare_thread_handler_common};
 use crate::common::tool_data::{CommonData, CommonToolData};
@@ -180,9 +182,10 @@ impl SameMusic {
                     return None;
                 }
 
-                let res = calc_fingerprint_helper(path, configuration);
+                let res = with_io_lock(Path::new(path), || calc_fingerprint_helper(path, configuration));
                 progress_handler.increase_size(music_entry.size);
                 progress_handler.increase_items(1);
+
 
                 let Ok(fingerprint) = res else {
                     return Some(None);
@@ -248,9 +251,10 @@ impl SameMusic {
                     return None;
                 }
 
-                let res = read_single_file_tags(&path, music_entry);
+                let res = with_io_lock(Path::new(&path), || read_single_file_tags(&path, music_entry));
                 progress_handler.increase_items(1);
                 Some(res)
+
             })
             .while_some()
             .flatten()

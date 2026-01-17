@@ -4,7 +4,9 @@ pub mod config_cache_path;
 pub mod consts;
 pub mod dir_traversal;
 pub mod directories;
+pub mod disk_control;
 pub mod extensions;
+
 pub mod image;
 pub mod items;
 pub mod logger;

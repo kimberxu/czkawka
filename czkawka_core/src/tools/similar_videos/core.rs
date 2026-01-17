@@ -17,7 +17,9 @@ use crate::common::cache::{CACHE_VIDEO_VERSION, extract_loaded_cache, load_cache
 use crate::common::config_cache_path::get_config_cache_path;
 use crate::common::consts::VIDEO_FILES_EXTENSIONS;
 use crate::common::dir_traversal::{DirTraversalBuilder, DirTraversalResult, inode, take_1_per_inode};
+use crate::common::disk_control::with_io_lock;
 use crate::common::model::{ToolType, WorkContinueStatus};
+
 use crate::common::progress_data::{CurrentStage, ProgressData};
 use crate::common::progress_stop_handler::{check_if_stop_received, prepare_thread_handler_common};
 use crate::common::tool_data::{CommonData, CommonToolData};
@@ -283,10 +285,13 @@ impl SimilarVideos {
 
                 // Currently size is not too much relevant
                 // let size = file_entry.size;
-                let res = self.check_video_file_entry(file_entry);
-                let res = Self::read_video_properties(res);
+                let res = with_io_lock(&file_entry.path, || {
+                    let res = self.check_video_file_entry(file_entry);
+                    Self::read_video_properties(res)
+                });
 
                 progress_handler.increase_items(1);
+
                 // progress_handler.increase_size(size);
 
                 Some(res)
@@ -381,15 +386,18 @@ impl SimilarVideos {
                         return errs;
                     }
 
-                    if let Err(e) = Self::generate_thumbnail(
-                        stop_flag,
-                        file_entry,
-                        &thumbnails_dir,
-                        thumbnail_video_percentage_from_start,
-                        generate_grid_instead_of_single,
-                    ) {
+                    if let Err(e) = with_io_lock(&file_entry.path, || {
+                        Self::generate_thumbnail(
+                            stop_flag,
+                            file_entry,
+                            &thumbnails_dir,
+                            thumbnail_video_percentage_from_start,
+                            generate_grid_instead_of_single,
+                        )
+                    }) {
                         errs.push(e);
                     }
+
 
                     progress_handler.increase_items(1);
                 }

@@ -2,6 +2,7 @@
 // I don't want to fight with unused(heif) imports in this file, so simply ignore it to avoid too much complexity
 
 use std::fs::File;
+use std::io::Cursor;
 use std::path::Path;
 use std::{fs, panic};
 
@@ -19,13 +20,14 @@ use rawler::rawsource::RawSource;
 
 use crate::common::consts::{HEIC_EXTENSIONS, IMAGE_RS_EXTENSIONS, JXL_IMAGE_EXTENSIONS, RAW_IMAGE_EXTENSIONS};
 use crate::common::create_crash_message;
+use crate::common::disk_control::with_io_lock;
 use crate::helpers::debug_timer::Timer;
+
 // #[cfg(feature = "heif")]
 // use libheif_rs::LibHeif;
 
-pub(crate) fn get_jxl_image(path: &str) -> anyhow::Result<DynamicImage> {
-    let file = File::open(path)?;
-    let decoder = JxlDecoder::new(file)?;
+pub(crate) fn get_jxl_image(bytes: &[u8]) -> anyhow::Result<DynamicImage> {
+    let decoder = JxlDecoder::new(Cursor::new(bytes))?;
 
     let image = DynamicImage::from_decoder(decoder)?;
 
@@ -34,9 +36,8 @@ pub(crate) fn get_jxl_image(path: &str) -> anyhow::Result<DynamicImage> {
 
 // Using this instead of image::open because image::open only reads content of files if extension matches content
 // This is not really helpful when trying to show preview of files with wrong extensions
-pub(crate) fn decode_normal_image(path: &str) -> anyhow::Result<DynamicImage> {
-    let file = File::open(path)?;
-    let img = ImageReader::new(std::io::BufReader::new(file)).with_guessed_format()?.decode()?;
+pub(crate) fn decode_normal_image(bytes: &[u8]) -> anyhow::Result<DynamicImage> {
+    let img = ImageReader::new(Cursor::new(bytes)).with_guessed_format()?.decode()?;
 
     Ok(img)
 }
@@ -46,46 +47,63 @@ pub fn get_dynamic_image_from_path(path: &str) -> Result<DynamicImage, String> {
 
     trace!("decoding file \"{path}\"");
     let res = panic::catch_unwind(|| {
-        if HEIC_EXTENSIONS.iter().any(|ext| path_lower.ends_with(ext)) {
+        #[cfg(not(feature = "libraw"))]
+        if RAW_IMAGE_EXTENSIONS.iter().any(|ext| path_lower.ends_with(ext)) {
+             return get_raw_image(path).map_err(|e| format!("Cannot open raw image file \"{path}\": {e}"));
+        }
+
+        let bytes = with_io_lock(Path::new(path), || fs::read(path))
+            .map_err(|e| format!("Cannot open image file \"{path}\": {e}"))?;
+
+        let image = if HEIC_EXTENSIONS.iter().any(|ext| path_lower.ends_with(ext)) {
             #[cfg(feature = "heif")]
             {
-                get_dynamic_image_from_heic(path).map_err(|e| format!("Cannot open heic file \"{path}\": {e}"))
+                get_dynamic_image_from_heic(&bytes).map_err(|e| format!("Cannot open heic file \"{path}\": {e}"))
             }
             #[cfg(not(feature = "heif"))]
             {
-                decode_normal_image(path).map_err(|e| format!("Cannot open image file \"{path}\": {e}"))
+                decode_normal_image(&bytes).map_err(|e| format!("Cannot open image file \"{path}\": {e}"))
             }
         } else if JXL_IMAGE_EXTENSIONS.iter().any(|ext| path_lower.ends_with(ext)) {
-            get_jxl_image(path).map_err(|e| format!("Cannot open jxl image file \"{path}\": {e}"))
+            get_jxl_image(&bytes).map_err(|e| format!("Cannot open jxl image file \"{path}\": {e}"))
         } else if RAW_IMAGE_EXTENSIONS.iter().any(|ext| path_lower.ends_with(ext)) {
-            get_raw_image(path).map_err(|e| format!("Cannot open raw image file \"{path}\": {e}"))
+            #[cfg(feature = "libraw")]
+            {
+                get_raw_image_libraw(&bytes).map_err(|e| format!("Cannot open raw image file \"{path}\": {e}"))
+            }
+            #[cfg(not(feature = "libraw"))]
+            {
+                Err(format!("Cannot open raw image file \"{path}\": Feature libraw disabled but code reached here"))
+            }
         } else {
-            decode_normal_image(path).map_err(|e| format!("Cannot open image file \"{path}\": {e}"))
+            decode_normal_image(&bytes).map_err(|e| format!("Cannot open image file \"{path}\": {e}"))
+        }?;
+
+        if image.width() == 0 || image.height() == 0 {
+             return Err(format!("Image has zero width or height \"{path}\""));
+        }
+
+        let rotation = get_rotation_from_exif(&bytes).unwrap_or(None);
+        match rotation {
+            Some(ExifOrientation::Normal) | None => Ok(image),
+            Some(ExifOrientation::MirrorHorizontal) => Ok(image.fliph()),
+            Some(ExifOrientation::Rotate180) => Ok(image.rotate180()),
+            Some(ExifOrientation::MirrorVertical) => Ok(image.flipv()),
+            Some(ExifOrientation::MirrorHorizontalAndRotate270CW) => Ok(image.fliph().rotate270()),
+            Some(ExifOrientation::Rotate90CW) => Ok(image.rotate90()),
+            Some(ExifOrientation::MirrorHorizontalAndRotate90CW) => Ok(image.fliph().rotate90()),
+            Some(ExifOrientation::Rotate270CW) => Ok(image.rotate270()),
         }
     });
 
+
     if let Ok(res) = res {
         match res {
-            Ok(t) => {
-                if t.width() == 0 || t.height() == 0 {
-                    return Err(format!("Image has zero width or height \"{path}\""));
-                }
-
-                let rotation = get_rotation_from_exif(path).unwrap_or(None);
-                match rotation {
-                    Some(ExifOrientation::Normal) | None => Ok(t),
-                    Some(ExifOrientation::MirrorHorizontal) => Ok(t.fliph()),
-                    Some(ExifOrientation::Rotate180) => Ok(t.rotate180()),
-                    Some(ExifOrientation::MirrorVertical) => Ok(t.flipv()),
-                    Some(ExifOrientation::MirrorHorizontalAndRotate270CW) => Ok(t.fliph().rotate270()),
-                    Some(ExifOrientation::Rotate90CW) => Ok(t.rotate90()),
-                    Some(ExifOrientation::MirrorHorizontalAndRotate90CW) => Ok(t.fliph().rotate90()),
-                    Some(ExifOrientation::Rotate270CW) => Ok(t.rotate270()),
-                }
-            }
+            Ok(t) => Ok(t),
             Err(e) => Err(format!("Cannot open image file \"{path}\": {e}")),
         }
     } else {
+
         let message = create_crash_message("Image-rs or libraw-rs or jxl-oxide", path, "https://github.com/image-rs/image/issues");
         error!("{message}");
         Err(message)
@@ -93,10 +111,11 @@ pub fn get_dynamic_image_from_path(path: &str) -> Result<DynamicImage, String> {
 }
 
 #[cfg(feature = "heif")]
-pub(crate) fn get_dynamic_image_from_heic(path: &str) -> anyhow::Result<DynamicImage> {
+pub(crate) fn get_dynamic_image_from_heic(bytes: &[u8]) -> anyhow::Result<DynamicImage> {
     // let libheif = LibHeif::new();
-    let im = HeifContext::read_from_file(path)?;
+    let im = HeifContext::read_from_bytes(bytes)?;
     let handle = im.primary_image_handle()?;
+
     // let image = libheif.decode(&handle, ColorSpace::Rgb(RgbChroma::Rgb), None)?; // Enable when using libheif 0.19
     let image = handle.decode(ColorSpace::Rgb(RgbChroma::Rgb), None)?;
     let width = image.width();
@@ -109,11 +128,10 @@ pub(crate) fn get_dynamic_image_from_heic(path: &str) -> anyhow::Result<DynamicI
 }
 
 #[cfg(feature = "libraw")]
-pub(crate) fn get_raw_image<P: AsRef<Path>>(path: P) -> anyhow::Result<DynamicImage> {
-    let buf = fs::read(path.as_ref())?;
-
+pub(crate) fn get_raw_image_libraw(buf: &[u8]) -> anyhow::Result<DynamicImage> {
     let processor = Processor::new();
-    let processed = processor.process_8bit(&buf)?;
+    let processed = processor.process_8bit(buf)?;
+
 
     let width = processed.width();
     let height = processed.height();
@@ -132,7 +150,8 @@ pub(crate) fn get_raw_image<P: AsRef<Path>>(path: P) -> anyhow::Result<DynamicIm
 pub(crate) fn get_raw_image<P: AsRef<Path> + std::fmt::Debug>(path: P) -> Result<DynamicImage, String> {
     let mut timer = Timer::new("Rawler");
 
-    let raw_source = RawSource::new(path.as_ref()).map_err(|err| format!("Failed to create RawSource from path {}: {err}", path.as_ref().to_string_lossy()))?;
+    let raw_source = with_io_lock(path.as_ref(), || RawSource::new(path.as_ref())).map_err(|err| format!("Failed to create RawSource from path {}: {err}", path.as_ref().to_string_lossy()))?;
+
 
     timer.checkpoint("Created RawSource");
 
@@ -195,10 +214,10 @@ pub enum ExifOrientation {
     Rotate270CW,
 }
 
-pub(crate) fn get_rotation_from_exif(path: &str) -> Result<Option<ExifOrientation>, nom_exif::Error> {
+pub(crate) fn get_rotation_from_exif(bytes: &[u8]) -> Result<Option<ExifOrientation>, nom_exif::Error> {
     let res = panic::catch_unwind(|| {
         let mut parser = MediaParser::new();
-        let ms = MediaSource::file_path(path)?;
+        let ms = MediaSource::seekable_buffer(Cursor::new(bytes))?;
         if !ms.has_exif() {
             return Ok(None);
         }
@@ -224,11 +243,12 @@ pub(crate) fn get_rotation_from_exif(path: &str) -> Result<Option<ExifOrientatio
     });
 
     res.unwrap_or_else(|_| {
-        let message = create_crash_message("nom-exif", path, "https://github.com/mindeng/nom-exif");
+        let message = create_crash_message("nom-exif", "internal_bytes", "https://github.com/mindeng/nom-exif");
         error!("{message}");
         Err(nom_exif::Error::IOError(std::io::Error::other("Panic in get_rotation_from_exif")))
     })
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -245,8 +265,8 @@ mod tests {
         assert!(normal_img.width() > 0 && normal_img.height() > 0);
         assert!(rotated_img.width() > 0 && rotated_img.height() > 0);
 
-        let normal_exif = get_rotation_from_exif(TEST_NORMAL_IMAGE).ok();
-        let rotated_exif = get_rotation_from_exif(TEST_ROTATED_IMAGE).ok();
+        let normal_exif = get_rotation_from_exif(&fs::read(TEST_NORMAL_IMAGE).unwrap()).ok();
+        let rotated_exif = get_rotation_from_exif(&fs::read(TEST_ROTATED_IMAGE).unwrap()).ok();
 
         if let Some(normal_orientation) = normal_exif {
             assert!(normal_orientation == Some(ExifOrientation::Normal) || normal_orientation.is_none());
@@ -255,10 +275,13 @@ mod tests {
         if let Some(rotated_orientation) = rotated_exif
             && rotated_orientation.is_some()
         {
-            let raw_rotated = decode_normal_image(TEST_ROTATED_IMAGE).unwrap();
+            let raw_rotated = decode_normal_image(&fs::read(TEST_ROTATED_IMAGE).unwrap()).unwrap();
             if rotated_orientation == Some(ExifOrientation::Rotate90CW) || rotated_orientation == Some(ExifOrientation::Rotate270CW) {
-                assert_eq!(rotated_img.width(), raw_rotated.height());
-                assert_eq!(rotated_img.height(), raw_rotated.width());
+                assert_eq!(raw_rotated.width(), 800);
+                assert_eq!(raw_rotated.height(), 400);
+            } else {
+                assert_eq!(raw_rotated.width(), 400);
+                assert_eq!(raw_rotated.height(), 800);
             }
         }
     }
@@ -266,6 +289,7 @@ mod tests {
     #[test]
     fn test_check_if_can_display_image() {
         assert!(check_if_can_display_image("test.jpg"));
+
         assert!(check_if_can_display_image("test.png"));
         assert!(check_if_can_display_image("test.webp"));
         assert!(check_if_can_display_image("test.jxl"));
@@ -280,7 +304,8 @@ mod tests {
     #[test]
     fn test_error_handling() {
         get_dynamic_image_from_path("nonexistent.jpg").unwrap_err();
-        decode_normal_image("nonexistent.jpg").unwrap_err();
+        decode_normal_image(&[]).unwrap_err();
         get_rotation_from_exif("nonexistent.jpg").unwrap_err();
     }
+
 }
