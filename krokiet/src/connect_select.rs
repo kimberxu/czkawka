@@ -1,4 +1,4 @@
-use slint::{ComponentHandle, Model, ModelRc, VecModel};
+use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 
 use crate::common::connect_i32_into_u64;
 use crate::connect_row_selection::checker::change_number_of_enabled_items;
@@ -27,6 +27,19 @@ pub(crate) fn connect_select(app: &MainWindow) {
             SelectMode::SelectNewest => select_by_size_date(&current_model, active_tab, true, false),
             SelectMode::SelectOldest => select_by_size_date(&current_model, active_tab, false, false),
         };
+        active_tab.set_tool_model(&app, new_model);
+        change_number_of_enabled_items(&app, active_tab, checked_items as i64 - unchecked_items as i64);
+    });
+
+    let a = app.as_weak();
+    app.global::<Callabler>().on_custom_selection(move |text, use_regex, case_sensitive, not_in, select_action| {
+        let app = a.upgrade().expect("Failed to upgrade app :(");
+        let active_tab = app.global::<GuiState>().get_active_tab();
+        let current_model = active_tab.get_tool_model(&app);
+
+        let (checked_items, unchecked_items, new_model) =
+            select_by_custom_property(&current_model, active_tab, text, use_regex, case_sensitive, not_in, select_action);
+
         active_tab.set_tool_model(&app, new_model);
         change_number_of_enabled_items(&app, active_tab, checked_items as i64 - unchecked_items as i64);
     });
@@ -138,6 +151,73 @@ fn select_by_resolution(model: &ModelRc<MainListModel>, active_tab: ActiveTab, b
     }
 
     (checked_items, 0, ModelRc::new(VecModel::from(old_data)))
+}
+
+fn select_by_custom_property(
+    model: &ModelRc<MainListModel>,
+    active_tab: ActiveTab,
+    text: SharedString,
+    use_regex: bool,
+    case_sensitive: bool,
+    not_in: bool,
+    select_action: bool,
+) -> SelectionResult {
+    let mut checked_items = 0;
+    let mut unchecked_items = 0;
+
+    let is_header_mode = active_tab.get_is_header_mode();
+
+    let mut old_data = model.iter().collect::<Vec<_>>();
+    let path_idx = active_tab.get_str_path_idx();
+    let text = text.as_str();
+
+    let regex: Option<regex::Regex> = if use_regex {
+        match regex::RegexBuilder::new(text).case_insensitive(!case_sensitive).build() {
+            Ok(r) => Some(r),
+            Err(_) => return (0, 0, ModelRc::new(VecModel::from(old_data))),
+        }
+    } else {
+        None
+    };
+
+    for x in old_data.iter_mut() {
+        if is_header_mode && x.header_row {
+            continue;
+        }
+
+        let str_data = x.val_str.iter().collect::<Vec<_>>();
+        let path = &str_data[path_idx];
+
+        let mut matches = if let Some(ref r) = regex {
+            r.is_match(path)
+        } else {
+            if case_sensitive {
+                path.contains(text)
+            } else {
+                path.to_lowercase().contains(&text.to_lowercase())
+            }
+        };
+
+        if not_in {
+            matches = !matches;
+        }
+
+        if matches {
+            if select_action {
+                if !x.checked {
+                    x.checked = true;
+                    checked_items += 1;
+                }
+            } else {
+                if x.checked {
+                    x.checked = false;
+                    unchecked_items += 1;
+                }
+            }
+        }
+    }
+
+    (checked_items, unchecked_items, ModelRc::new(VecModel::from(old_data)))
 }
 
 fn select_by_size_date(model: &ModelRc<MainListModel>, active_tab: ActiveTab, biggest_newest: bool, size: bool) -> SelectionResult {
