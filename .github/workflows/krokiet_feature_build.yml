@@ -28,9 +28,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Build CLI
-        run: cargo build --release --bin czkawka_cli
-
       - name: Build Krokiet (GUI)
         run: cargo build --release --bin krokiet --no-default-features --features "winit_skia_opengl,winit_software"
 
@@ -39,6 +36,5 @@ jobs:
         with:
           name: Krokiet_Feature_Build
           path: |
-            target/release/czkawka_cli.exe
             target/release/krokiet.exe
           if-no-files-found: error
