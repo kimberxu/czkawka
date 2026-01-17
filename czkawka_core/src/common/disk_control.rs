@@ -123,6 +123,7 @@ impl DiskController {
 
     fn acquire(&self, path: &Path) -> usize {
         let id = self.get_disk_id(path);
+        // log::debug!("Acquiring lock for disk {} (Path: {:?})", id, path);
         self.semaphores[id].acquire();
         id
     }

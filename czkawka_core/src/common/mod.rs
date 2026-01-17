@@ -110,9 +110,9 @@ pub fn get_optimal_thread_count(directories: &[PathBuf], tool_type: ToolType) ->
     let disk_count = std::cmp::max(1, unique_disks);
 
     let multiplier = match tool_type {
-        ToolType::Duplicate => 1,
-        ToolType::SimilarVideos => 2,
-        ToolType::SimilarImages => 3,
+        ToolType::Duplicate => 4, // Higher thread count to prevent starvation when threads block on IO locks
+        ToolType::SimilarVideos => 3,
+        ToolType::SimilarImages => 4,
         _ => 1,
     };
 
