@@ -238,6 +238,7 @@ pub(crate) fn get_rotation_from_exif(bytes: &[u8]) -> Result<Option<ExifOrientat
                 };
             }
         }
+        }
         Ok(None)
     });
 
