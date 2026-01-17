@@ -1,61 +1,77 @@
 import { Button, VerticalBox } from "std-widgets.slint";
-import { PopupBase } from "popup_base.slint";
 import { Callabler } from "callabler.slint";
+import { ColorPalette } from "color_palette.slint";
 
-export component PopupContextMenu inherits PopupBase {
+export component PopupContextMenu inherits Rectangle {
     in property <int> selected_index: -1;
-    callback close_popup();
-    
-    // Override default behavior to look like a menu
-    width: 250px;
-    height: 200px; // Approximate
-    title_text: "Actions";
-    enabled_ok_button: false;
+    callback show();
+    callback close();
 
-    VerticalBox {
-        padding: 5px;
-        spacing: 2px;
-        
-        Button {
-            text: "Open File";
-            clicked => {
-                Callabler.context_open_file(root.selected_index);
-                root.close();
+    // Use width/height 0 so it doesn't affect layout if placed in a layout, 
+    // though in main_window it seems to be placed absolutely or in a layered way.
+    width: 0px; 
+    height: 0px;
+
+    popup_window := PopupWindow {
+        x: root.x;
+        y: root.y;
+        width: 250px;
+        height: 220px;
+        close-policy: close-on-click-outside;
+
+        Rectangle {
+            background: ColorPalette.popup_background;
+            border-radius: 5px;
+            border-width: 1px;
+            border-color: ColorPalette.popup_border_color;
+            
+            VerticalBox {
+                padding: 5px;
+                spacing: 2px;
+                
+                Button { 
+                    text: "Open File"; 
+                    clicked => { 
+                        Callabler.context_open_file(root.selected_index); 
+                        popup_window.close(); 
+                    } 
+                }
+                Button { 
+                    text: "Open Folder"; 
+                    clicked => { 
+                        Callabler.context_open_folder(root.selected_index); 
+                        popup_window.close(); 
+                    } 
+                }
+                Button { 
+                    text: "Select duplicates in this folder"; 
+                    clicked => { 
+                        Callabler.context_select_in_folder(root.selected_index); 
+                        popup_window.close(); 
+                    } 
+                }
+                Button { 
+                    text: "Select duplicates in other folders"; 
+                    clicked => { 
+                        Callabler.context_select_other_folders(root.selected_index); 
+                        popup_window.close(); 
+                    } 
+                }
+                Button { 
+                    text: "Protect this folder"; 
+                    clicked => { 
+                        Callabler.context_protect_folder(root.selected_index); 
+                        popup_window.close(); 
+                    } 
+                }
             }
         }
-        Button {
-            text: "Open Folder";
-            clicked => {
-                Callabler.context_open_folder(root.selected_index);
-                root.close();
-            }
-        }
-        Button {
-            text: "Select duplicates in this folder";
-            clicked => {
-                Callabler.context_select_in_folder(root.selected_index);
-                root.close();
-            }
-        }
-        Button {
-            text: "Select duplicates in other folders";
-            clicked => {
-                Callabler.context_select_other_folders(root.selected_index);
-                root.close();
-            }
-        }
-        Button {
-            text: "Protect this folder"; // Unchecks all in this folder
-            clicked => {
-                Callabler.context_protect_folder(root.selected_index);
-                root.close();
-            }
-        }
-        Button {
-             text: "Unprotect this folder"; // Just in case user wants to re-include? 
-             // Maybe "Invert protection"? For now simple actions.
-             visible: false;
-             clicked => { root.close(); }
-        }
+    }
+
+    show() => {
+        popup_window.show();
+    }
+    close() => {
+        popup_window.close();
     }
 }
