@@ -1,0 +1,44 @@
+name: Build Personal HDD Optimized Version
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    name: Build on Windows
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: personal-hdd-optimization
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Configure Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build CLI
+        run: cargo build --release --bin czkawka_cli
+
+      - name: Build Krokiet (GUI)
+        run: cargo build --release --bin krokiet --no-default-features --features "winit_skia_opengl,winit_software"
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Personal_HDD_Optimized_Build
+          path: |
+            target/release/czkawka_cli.exe
+            target/release/krokiet.exe
+          if-no-files-found: error
