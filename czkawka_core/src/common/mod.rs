@@ -29,7 +29,9 @@ use items::SingleExcludedItem;
 use log::debug;
 
 use crate::common::consts::DEFAULT_WORKER_THREAD_SIZE;
+use crate::common::model::ToolType;
 use crate::flc;
+use itertools::Itertools;
 
 static NUMBER_OF_THREADS: std::sync::LazyLock<Mutex<Option<usize>>> = std::sync::LazyLock::new(|| Mutex::new(None));
 static ALL_AVAILABLE_THREADS: std::sync::LazyLock<Mutex<Option<usize>>> = std::sync::LazyLock::new(|| Mutex::new(None));
@@ -71,6 +73,52 @@ pub fn set_number_of_threads(thread_number: usize) {
         .stack_size(DEFAULT_WORKER_THREAD_SIZE)
         .build_global()
         .expect("Cannot set number of threads");
+}
+
+pub fn get_optimal_thread_count(directories: &[PathBuf], tool_type: ToolType) -> usize {
+    #[cfg(target_family = "windows")]
+    let get_root = |p: &Path| -> Option<String> {
+        p.components().next().map(|c| match c {
+            std::path::Component::Prefix(prefix_component) => match prefix_component.kind() {
+                std::path::Prefix::Disk(disk_byte) | std::path::Prefix::VerbatimDisk(disk_byte) => {
+                    let disk_char = (disk_byte as char).to_ascii_uppercase();
+                    format!("{}:", disk_char)
+                }
+                std::path::Prefix::UNC(server, share) | std::path::Prefix::VerbatimUNC(server, share) => {
+                    format!("\\\\{}\\{}", server.to_string_lossy(), share.to_string_lossy())
+                }
+                _ => p.to_string_lossy().to_string(),
+            },
+            _ => p.to_string_lossy().to_string(),
+        })
+    };
+
+    #[cfg(not(target_family = "windows"))]
+    let get_root = |p: &Path| -> Option<String> {
+        // Simple heuristic for Unix: top-level directory or mount point assumption
+        // This is imperfect but better than nothing for "disks"
+        p.iter().next().map(|c| c.to_string_lossy().to_string())
+    };
+
+    let unique_disks: usize = directories
+        .iter()
+        .filter_map(|d| get_root(d))
+        .unique()
+        .count();
+
+    // Default to at least 1 disk if input is empty or weird
+    let disk_count = std::cmp::max(1, unique_disks);
+
+    let multiplier = match tool_type {
+        ToolType::Duplicate => 1,
+        ToolType::SimilarVideos => 2,
+        ToolType::SimilarImages => 3,
+        _ => 1,
+    };
+
+    let optimal = disk_count * multiplier;
+    debug!("Optimal threads calculation: {disk_count} unique disks found * {multiplier} multiplier = {optimal} threads");
+    optimal
 }
 
 pub fn check_if_folder_contains_only_empty_folders<P: AsRef<Path>>(path: P) -> Result<(), String> {

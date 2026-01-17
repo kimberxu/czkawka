@@ -15,6 +15,7 @@ use rayon::prelude::*;
 use crate::common::cache::{CACHE_DUPLICATE_VERSION, load_cache_from_file_generalized_by_size, save_cache_to_file_generalized};
 use crate::common::dir_traversal::{DirTraversalBuilder, DirTraversalResult};
 use crate::common::disk_control::with_io_lock;
+use crate::common::get_optimal_thread_count;
 use crate::common::model::{CheckingMethod, FileEntry, HashType, ToolType, WorkContinueStatus};
 
 use crate::common::progress_data::{CurrentStage, ProgressData};
@@ -252,7 +253,9 @@ impl DuplicateFinder {
                     .map(|(_size, vec)| if vec.len() > 1 { vec.len() as u64 } else { 0 })
                     .sum::<u64>();
 
-                let thread_number = self.get_thread_number().unwrap_or(0);
+                let thread_number = self
+                    .get_thread_number()
+                    .unwrap_or_else(|| get_optimal_thread_count(&self.common_data.directories.included_directories, ToolType::Duplicate));
 
                 let check_files_size_closure = || {
                     grouped_file_entries
@@ -458,7 +461,10 @@ impl DuplicateFinder {
         let non_cached_files_to_check: Vec<(u64, Vec<DuplicateEntry>)> = non_cached_files_to_check.into_iter().collect();
 
         debug!("Starting calculating prehash");
-        let thread_number = self.get_thread_number().unwrap_or(0);
+        let thread_number = self
+            .get_thread_number()
+            .unwrap_or_else(|| get_optimal_thread_count(&self.common_data.directories.included_directories, ToolType::Duplicate));
+
         let prehashing_closure = || {
             non_cached_files_to_check
                 .into_par_iter()
@@ -697,7 +703,9 @@ impl DuplicateFinder {
             "Starting full hashing of {} files",
             non_cached_files_to_check.iter().map(|(_size, v)| v.len() as u64).sum::<u64>()
         );
-        let thread_number = self.get_thread_number().unwrap_or(0);
+        let thread_number = self
+            .get_thread_number()
+            .unwrap_or_else(|| get_optimal_thread_count(&self.common_data.directories.included_directories, ToolType::Duplicate));
         let full_hashing_closure = || {
             non_cached_files_to_check
                 .into_par_iter()

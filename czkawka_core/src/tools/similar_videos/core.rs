@@ -18,6 +18,7 @@ use crate::common::config_cache_path::get_config_cache_path;
 use crate::common::consts::VIDEO_FILES_EXTENSIONS;
 use crate::common::dir_traversal::{DirTraversalBuilder, DirTraversalResult, inode, take_1_per_inode};
 use crate::common::disk_control::with_io_lock;
+use crate::common::get_optimal_thread_count;
 use crate::common::model::{ToolType, WorkContinueStatus};
 
 use crate::common::progress_data::{CurrentStage, ProgressData};
@@ -61,7 +62,9 @@ impl SimilarVideos {
 
         match result {
             DirTraversalResult::SuccessFiles { grouped_file_entries, warnings } => {
-                let thread_number = self.get_thread_number().unwrap_or(0);
+                let thread_number = self
+                    .get_thread_number()
+                    .unwrap_or_else(|| get_optimal_thread_count(&self.common_data.directories.included_directories, ToolType::SimilarVideos));
                 let check_closure = || {
                     grouped_file_entries
                         .into_par_iter()
@@ -293,7 +296,9 @@ impl SimilarVideos {
         );
 
         let non_cached_files_to_check: Vec<_> = non_cached_files_to_check.into_iter().map(|f| f.1).collect();
-        let thread_number = self.get_thread_number().unwrap_or(0);
+        let thread_number = self
+            .get_thread_number()
+            .unwrap_or_else(|| get_optimal_thread_count(&self.common_data.directories.included_directories, ToolType::SimilarVideos));
         let sort_closure = || {
             non_cached_files_to_check
                 .into_par_iter()
@@ -409,7 +414,9 @@ impl SimilarVideos {
         let thumbnail_video_percentage_from_start = self.params.thumbnail_video_percentage_from_start;
         let generate_grid_instead_of_single = self.params.generate_thumbnail_grid_instead_of_single;
 
-        let thread_number = self.get_thread_number().unwrap_or(0);
+        let thread_number = self
+            .get_thread_number()
+            .unwrap_or_else(|| get_optimal_thread_count(&self.common_data.directories.included_directories, ToolType::SimilarVideos));
         let mut create_thumbnails_closure = || {
             self.similar_vectors
                 .par_iter_mut()

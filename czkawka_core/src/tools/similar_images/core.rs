@@ -17,6 +17,7 @@ use rayon::prelude::*;
 use crate::common::cache::{CACHE_IMAGE_VERSION, extract_loaded_cache, load_cache_from_file_generalized_by_path, save_cache_to_file_generalized};
 use crate::common::consts::{HEIC_EXTENSIONS, IMAGE_RS_SIMILAR_IMAGES_EXTENSIONS, JXL_IMAGE_EXTENSIONS, RAW_IMAGE_EXTENSIONS};
 use crate::common::dir_traversal::{DirTraversalBuilder, DirTraversalResult, inode, take_1_per_inode};
+use crate::common::get_optimal_thread_count;
 use crate::common::image::get_dynamic_image_from_path;
 use crate::common::model::{ToolType, WorkContinueStatus};
 use crate::common::progress_data::{CurrentStage, ProgressData};
@@ -68,7 +69,10 @@ impl SimilarImages {
 
         match result {
             DirTraversalResult::SuccessFiles { grouped_file_entries, warnings } => {
-                let thread_number = self.get_thread_number().unwrap_or(0);
+                let thread_number = self
+                    .get_thread_number()
+                    .unwrap_or_else(|| get_optimal_thread_count(&self.common_data.directories.included_directories, ToolType::SimilarImages));
+
                 let check_closure = || {
                     grouped_file_entries
                         .into_par_iter()
@@ -166,7 +170,10 @@ impl SimilarImages {
         );
 
         debug!("hash_images - start hashing images");
-        let thread_number = self.get_thread_number().unwrap_or(0);
+        let thread_number = self
+            .get_thread_number()
+            .unwrap_or_else(|| get_optimal_thread_count(&self.common_data.directories.included_directories, ToolType::SimilarImages));
+
         let hash_closure = || {
             non_cached_files_to_check
                 .into_par_iter()
@@ -361,7 +368,10 @@ impl SimilarImages {
         // With chunks we can save results to variables and later use such variables, to skip ones with too big difference
         // Not really helpful, when not finding almost any duplicates, but with bigger amount of them, this should help a lot
         let base_hashes_chunks = base_hashes.chunks(1000);
-        let thread_number = self.get_thread_number().unwrap_or(0);
+        let thread_number = self
+            .get_thread_number()
+            .unwrap_or_else(|| get_optimal_thread_count(&self.common_data.directories.included_directories, ToolType::SimilarImages));
+
         for chunk in base_hashes_chunks {
             let chunk_closure = || {
                 chunk
