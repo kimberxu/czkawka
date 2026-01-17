@@ -25,6 +25,8 @@ export component SelectableTableView inherits Rectangle {
     in-out property <int> sort_column_idx: -1;
     in-out property <bool> sort_available: true;
 
+    callback show_context_menu(int, length, length);
+
     out property <length> list_view_width: max(self.width - 20px, column_sizes[0] + column_sizes[1] + column_sizes[2] + column_sizes[3] + column_sizes[4] + column_sizes[5] + column_sizes[6] + column_sizes[7] + column_sizes[8] + column_sizes[9] + column_sizes[10] + column_sizes[11]);
 
     VerticalBox {
@@ -113,8 +115,7 @@ export component SelectableTableView inherits Rectangle {
                     }
                     pointer-event(event) => {
                         if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up) {
-                            Callabler.row_reverse_single_unique_item(idx);
-                            Callabler.row_open_parent_of_selected_item();
+                            root.show_context_menu(idx, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
                         } else if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up) {
                             if (event.modifiers.control) {
                                 start_shift_idx = idx;

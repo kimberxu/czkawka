@@ -17,6 +17,8 @@ import { PopupSelectResults } from "popup_select_results.slint";
 import { PopupRenameFiles } from "popup_rename_files.slint";
 import { PopupSave } from "popup_save.slint";
 import { PopupSortResults } from "popup_sort.slint";
+import { PopupCustomSelect } from "popup_custom_select.slint";
+import { PopupContextMenu } from "popup_context_menu.slint";
 import { PopupActionConfirm } from "popup_action_confirm.slint";
 import { PopupOptimize } from "popup_optimize.slint";
 import { PopupCleanExif } from "popup_clean_exif.slint";
@@ -106,6 +108,12 @@ export component MainWindow inherits Window {
                         bad_extensions_model <=> root.bad_extensions_model;
                         exif_remover_model <=> root.exif_remover_model;
                         video_optimizer_model <=> root.video_optimizer_model;
+                        show_context_menu(idx, x, y) => {
+                            context_menu_popup.selected_index = idx;
+                            context_menu_popup.x = x;
+                            context_menu_popup.y = y;
+                            context_menu_popup.show();
+                        }
                     }
 
                     preview_or_tool_settings := Rectangle {
@@ -169,6 +177,9 @@ export component MainWindow inherits Window {
                 select_popup_window.y_offset = y_offset;
                 select_popup_window.show_popup();
             }
+            show_custom_select_popup() => {
+                custom_select_popup.show_popup();
+            }
             show_action_popup(popup_request) => {
                 request_setup_action_popup(popup_request);
             }
@@ -223,6 +234,19 @@ export component MainWindow inherits Window {
         y: parent.y + y_offset - self.all_items_height - 5px;
         height: root.height;
         width: root.width;
+        show_custom_select_popup => {
+            custom_select_popup.show_popup();
+        }
+    }
+
+    custom_select_popup := PopupCustomSelect {
+        height: root.height;
+        width: root.width;
+        x: parent.x + (root.width - self.popup_width) / 2.0;
+        y: parent.y + (parent.height - self.popup_height) / 2.0;
+    }
+
+    context_menu_popup := PopupContextMenu {
     }
 
     delete_popup_window := PopupDelete {

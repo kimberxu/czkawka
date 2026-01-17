@@ -1,0 +1,73 @@
+import { LineEdit, CheckBox, Button, VerticalBox, HorizontalBox } from "std-widgets.slint";
+import { PopupBase } from "popup_base.slint";
+import { Translations } from "translations.slint";
+import { Callabler } from "callabler.slint";
+
+export component PopupCustomSelect inherits Rectangle {
+    out property <length> popup_width: 400px;
+    out property <length> popup_height: 300px;
+    callback show_popup();
+    callback close_popup();
+
+    private property <string> text_data;
+    private property <bool> use_regex: false;
+    private property <bool> case_sensitive: false;
+    private property <bool> not_in: false;
+
+    popup_window := PopupBase {
+        width: popup_width;
+        height: popup_height;
+        title_text: "Custom Selection"; // TODO: Translation
+        // Hide default OK button as we have custom action buttons
+        enabled_ok_button: false;
+        
+        VerticalBox {
+            LineEdit {
+                placeholder-text: "Enter text or regex...";
+                text <=> text_data;
+            }
+            
+            HorizontalBox {
+                CheckBox {
+                    text: "Regex";
+                    checked <=> use_regex;
+                }
+                CheckBox {
+                    text: "Case Sensitive";
+                    checked <=> case_sensitive;
+                }
+                CheckBox {
+                    text: "Not In";
+                    checked <=> not_in;
+                }
+            }
+
+            HorizontalBox {
+                Button {
+                    text: "Select";
+                    enabled: text_data != "";
+                    clicked => {
+                        Callabler.custom_selection(text_data, use_regex, case_sensitive, not_in, true);
+                        popup_window.close();
+                    }
+                }
+                Button {
+                    text: "Deselect";
+                    enabled: text_data != "";
+                    clicked => {
+                        Callabler.custom_selection(text_data, use_regex, case_sensitive, not_in, false);
+                        popup_window.close();
+                    }
+                }
+            }
+        }
+    }
+
+    show_popup() => {
+        text_data = "";
+        popup_window.show();
+    }
+    close_popup() => {
+        popup_window.close();
+    }
+}

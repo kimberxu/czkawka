@@ -29,7 +29,15 @@ export global Callabler {
 
     callback delete_selected_items();
     callback select_items(SelectMode);
+    callback custom_selection(string, bool, bool, bool, bool);
     callback sort_items(SortMode);
+
+    // Context Menu Actions
+    callback context_open_file(int);
+    callback context_open_folder(int);
+    callback context_select_in_folder(int);
+    callback context_select_other_folders(int);
+    callback context_protect_folder(int);
 
     // Preview
     callback load_image_preview(string);

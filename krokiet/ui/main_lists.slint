@@ -35,8 +35,10 @@ export component MainList {
     in-out property <[MainListModel]> video_optimizer_model: [];
 
     callback changed_active_tab();
+    callback show_context_menu(int, length, length);
 
     duplicates := SelectableTableView {
+        show_context_menu(idx, x, y) => { root.show_context_menu(idx, x, y); }
         visible: GuiState.active_tab == ActiveTab.DuplicateFiles;
         min-width: 200px;
         height: parent.height;
@@ -50,6 +52,7 @@ export component MainList {
     }
 
     empty_folders := SelectableTableView {
+        show_context_menu(idx, x, y) => { root.show_context_menu(idx, x, y); }
         visible: GuiState.active_tab == ActiveTab.EmptyFolders;
         min-width: 200px;
         height: parent.height;
@@ -63,6 +66,7 @@ export component MainList {
     }
 
     big_files := SelectableTableView {
+        show_context_menu(idx, x, y) => { root.show_context_menu(idx, x, y); }
         visible: GuiState.active_tab == ActiveTab.BigFiles;
         min-width: 200px;
         height: parent.height;
@@ -76,6 +80,7 @@ export component MainList {
     }
 
     empty_files := SelectableTableView {
+        show_context_menu(idx, x, y) => { root.show_context_menu(idx, x, y); }
         visible: GuiState.active_tab == ActiveTab.EmptyFiles;
         min-width: 200px;
         height: parent.height;
@@ -89,6 +94,7 @@ export component MainList {
     }
 
     temporary_files := SelectableTableView {
+        show_context_menu(idx, x, y) => { root.show_context_menu(idx, x, y); }
         visible: GuiState.active_tab == ActiveTab.TemporaryFiles;
         min-width: 200px;
         height: parent.height;
@@ -102,6 +108,7 @@ export component MainList {
     }
 
     similar_images := SelectableTableView {
+        show_context_menu(idx, x, y) => { root.show_context_menu(idx, x, y); }
         visible: GuiState.active_tab == ActiveTab.SimilarImages;
         min-width: 200px;
         height: parent.height;
@@ -115,6 +122,7 @@ export component MainList {
     }
 
     similar_videos := SelectableTableView {
+        show_context_menu(idx, x, y) => { root.show_context_menu(idx, x, y); }
         visible: GuiState.active_tab == ActiveTab.SimilarVideos;
         min-width: 200px;
         height: parent.height;
@@ -128,6 +136,7 @@ export component MainList {
     }
 
     similar_music := SelectableTableView {
+        show_context_menu(idx, x, y) => { root.show_context_menu(idx, x, y); }
         visible: GuiState.active_tab == ActiveTab.SimilarMusic;
         min-width: 200px;
         height: parent.height;
@@ -141,6 +150,7 @@ export component MainList {
     }
 
     invalid_symlink := SelectableTableView {
+        show_context_menu(idx, x, y) => { root.show_context_menu(idx, x, y); }
         visible: GuiState.active_tab == ActiveTab.InvalidSymlinks;
         min-width: 200px;
         height: parent.height;
@@ -154,6 +164,7 @@ export component MainList {
     }
 
     broken_files := SelectableTableView {
+        show_context_menu(idx, x, y) => { root.show_context_menu(idx, x, y); }
         visible: GuiState.active_tab == ActiveTab.BrokenFiles;
         min-width: 200px;
         height: parent.height;
@@ -167,6 +178,7 @@ export component MainList {
     }
 
     bad_extensions := SelectableTableView {
+        show_context_menu(idx, x, y) => { root.show_context_menu(idx, x, y); }
         visible: GuiState.active_tab == ActiveTab.BadExtensions;
         min-width: 200px;
         height: parent.height;
@@ -180,6 +192,7 @@ export component MainList {
     }
 
     exif_remover := SelectableTableView {
+        show_context_menu(idx, x, y) => { root.show_context_menu(idx, x, y); }
         visible: GuiState.active_tab == ActiveTab.ExifRemover;
         min-width: 200px;
         height: parent.height;
@@ -193,6 +206,7 @@ export component MainList {
     }
 
     video_optimizer := SelectableTableView {
+        show_context_menu(idx, x, y) => { root.show_context_menu(idx, x, y); }
         visible: GuiState.active_tab == ActiveTab.VideoOptimizer;
         min-width: 200px;
         height: parent.height;

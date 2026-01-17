@@ -1,0 +1,61 @@
+import { Button, VerticalBox } from "std-widgets.slint";
+import { PopupBase } from "popup_base.slint";
+import { Callabler } from "callabler.slint";
+
+export component PopupContextMenu inherits PopupBase {
+    in property <int> selected_index: -1;
+    callback close_popup();
+    
+    // Override default behavior to look like a menu
+    width: 250px;
+    height: 200px; // Approximate
+    title_text: "Actions";
+    enabled_ok_button: false;
+
+    VerticalBox {
+        padding: 5px;
+        spacing: 2px;
+        
+        Button {
+            text: "Open File";
+            clicked => {
+                Callabler.context_open_file(root.selected_index);
+                root.close();
+            }
+        }
+        Button {
+            text: "Open Folder";
+            clicked => {
+                Callabler.context_open_folder(root.selected_index);
+                root.close();
+            }
+        }
+        Button {
+            text: "Select duplicates in this folder";
+            clicked => {
+                Callabler.context_select_in_folder(root.selected_index);
+                root.close();
+            }
+        }
+        Button {
+            text: "Select duplicates in other folders";
+            clicked => {
+                Callabler.context_select_other_folders(root.selected_index);
+                root.close();
+            }
+        }
+        Button {
+            text: "Protect this folder"; // Unchecks all in this folder
+            clicked => {
+                Callabler.context_protect_folder(root.selected_index);
+                root.close();
+            }
+        }
+        Button {
+             text: "Unprotect this folder"; // Just in case user wants to re-include? 
+             // Maybe "Invert protection"? For now simple actions.
+             visible: false;
+             clicked => { root.close(); }
+        }
+    }
+}
