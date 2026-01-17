@@ -3,11 +3,15 @@ name: Build Krokiet Feature Branch
 on:
   workflow_dispatch:
 
-jobs:
-  build-windows:
-    runs-on: windows-latest
-    name: Build Feature Branch
+env:
+  CARGO_TERM_COLOR: always
 
+jobs:
+  # Job 1: Build Core and Cache it
+  # This job will succeed even if GUI code is broken, ensuring core artifacts are cached.
+  build-core:
+    runs-on: windows-latest
+    name: Pre-build Core
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -17,17 +21,49 @@ jobs:
       - name: Setup Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Configure Cache
+      # Cache the target directory based on Cargo.lock
+      # We use a specific key suffix '-core-' to separate it
+      - name: Cache Core Artifacts
+        id: cache-core
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+          key: ${{ runner.os }}-cargo-core-${{ hashFiles('**/Cargo.lock') }}
 
+      # Build ONLY the core library
+      - name: Build Czkawka Core
+        run: cargo build --release -p czkawka_core
+
+  # Job 2: Build GUI using cached Core
+  build-gui:
+    needs: build-core
+    runs-on: windows-latest
+    name: Build Krokiet GUI
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: feature/krokiet-improved-selection
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      # Restore the cache created by the previous job
+      - name: Restore Core Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-core-${{ hashFiles('**/Cargo.lock') }}
+          fail-on-cache-miss: true # Verify that the previous job worked
+
+      # Build GUI
+      # Core is already built in 'target', so Cargo will skip it and focus on Krokiet
       - name: Build Krokiet (GUI)
         run: cargo build --release --bin krokiet --no-default-features --features "winit_skia_opengl,winit_software"
 
