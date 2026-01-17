@@ -12,9 +12,11 @@ export component PopupSelectResults inherits Rectangle {
     out property <length> item_width;
     out property <length> all_items_height: item_height * model.length;
 
+    callback show_custom_select_popup();
+
     popup_window := PopupWindow {
         width <=> item_width;
-        height: all_items_height;
+        height: all_items_height + item_height; // Need to account for the extra custom button
 
         close-policy: PopupClosePolicy.close-on-click-outside;
         Rectangle {
@@ -31,14 +33,13 @@ export component PopupSelectResults inherits Rectangle {
                         popup_window.close();
                     }
                 }
-            Button { 
-                text: "自定义选择..."; 
-                clicked => { 
-                    root.show_custom_select_popup();
-                    popup_window.close();
-                } 
-            }
-            }
+                Button { 
+                    text: "自定义选择..."; 
+                    height: item_height;
+                    clicked => { 
+                        root.show_custom_select_popup();
+                        popup_window.close();
+                    } 
                 }
             }
         }
@@ -47,7 +48,6 @@ export component PopupSelectResults inherits Rectangle {
     show_popup() => {
         popup_window.show();
     }
-    callback show_custom_select_popup();
     close_popup() => {
         popup_window.close();
     }
