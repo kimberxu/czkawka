@@ -7,70 +7,48 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # Job 1: Build Core and Cache it
-  # This job will succeed even if GUI code is broken, ensuring core artifacts are cached.
-  build-core:
+  build-all:
     runs-on: windows-latest
-    name: Pre-build Core
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: feature/krokiet-improved-selection
+      - uses: dtolnay/rust-toolchain@stable
 
-      - name: Setup Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      # Cache the target directory based on Cargo.lock
-      # We use a specific key suffix '-core-' to separate it
-      - name: Cache Core Artifacts
-        id: cache-core
-        uses: actions/cache@v4
+      # 1. 尝试恢复缓存 (Core 或 完整GUI 均可)
+      - name: Restore Cache
+        id: restore-cache
+        uses: actions/cache/restore@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             target
+          # 这里用 Core 的 Key 来作为基础 Key
           key: ${{ runner.os }}-cargo-core-${{ hashFiles('**/Cargo.lock') }}
 
-      # Build ONLY the core library
-      - name: Build Czkawka Core
+      # 2. 编译 Core
+      - name: Build Core
         run: cargo build --release -p czkawka_core
 
-  # Job 2: Build GUI using cached Core
-  build-gui:
-    needs: build-core
-    runs-on: windows-latest
-    name: Build Krokiet GUI
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          ref: feature/krokiet-improved-selection
-
-      - name: Setup Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      # Restore the cache created by the previous job
-      - name: Restore Core Cache
-        uses: actions/cache@v4
+      # 3. 【核心技巧】：哪怕后面 GUI 挂了，这里先把 Core 的进度存下来
+      # 只有当缓存没有命中（是新的构建）时才保存，避免 Key 冲突报错
+      - name: Save Core Cache
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-core-${{ hashFiles('**/Cargo.lock') }}
-          fail-on-cache-miss: true # Verify that the previous job worked
 
-      # Build GUI
-      # Core is already built in 'target', so Cargo will skip it and focus on Krokiet
+      # 4. 编译 GUI (如果这里挂了，Core 的缓存已经在第3步存好了)
       - name: Build Krokiet (GUI)
         run: cargo build --release --bin krokiet --no-default-features --features "winit_skia_opengl,winit_software"
 
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+      # 5. 上传产物
+      - uses: actions/upload-artifact@v4
         with:
           name: Krokiet_Feature_Build
-          path: |
-            target/release/krokiet.exe
-          if-no-files-found: error
+          path: target/release/krokiet.exe
