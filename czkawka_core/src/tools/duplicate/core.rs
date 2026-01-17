@@ -27,8 +27,10 @@ use crate::tools::duplicate::{
 
 impl DuplicateFinder {
     pub fn new(params: DuplicateFinderParameters) -> Self {
+        let mut common_data = CommonToolData::new(ToolType::Duplicate);
+        common_data.thread_number = Some(1);
         Self {
-            common_data: CommonToolData::new(ToolType::Duplicate),
+            common_data,
             information: Info::default(),
             files_with_identical_names: Default::default(),
             files_with_identical_size: Default::default(),
@@ -249,23 +251,39 @@ impl DuplicateFinder {
                     .iter()
                     .map(|(_size, vec)| if vec.len() > 1 { vec.len() as u64 } else { 0 })
                     .sum::<u64>();
-                self.files_with_identical_size = grouped_file_entries
-                    .into_par_iter()
-                    .with_max_len(rayon_max_len)
-                    .filter_map(|(size, vec)| {
-                        if vec.len() <= 1 {
-                            return None;
-                        }
 
-                        let vector = if self.get_params().ignore_hard_links { filter_hard_links(vec) } else { vec };
+                let thread_number = self.get_thread_number().unwrap_or(0);
 
-                        if vector.len() > 1 {
-                            Some((size, vector.into_iter().map(FileEntry::into_duplicate_entry).collect()))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
+                let check_files_size_closure = || {
+                    grouped_file_entries
+                        .into_par_iter()
+                        .with_max_len(rayon_max_len)
+                        .filter_map(|(size, vec)| {
+                            if vec.len() <= 1 {
+                                return None;
+                            }
+
+                            let vector = if self.get_params().ignore_hard_links { filter_hard_links(vec) } else { vec };
+
+                            if vector.len() > 1 {
+                                Some((size, vector.into_iter().map(FileEntry::into_duplicate_entry).collect()))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect()
+                };
+
+                self.files_with_identical_size = if thread_number > 0 {
+                    rayon::ThreadPoolBuilder::new()
+                        .num_threads(thread_number)
+                        .build()
+                        .unwrap()
+                        .install(check_files_size_closure)
+                } else {
+                    check_files_size_closure()
+                };
+
                 let filtered_size = self.files_with_identical_size.values().map(|v| v.len() as u64).sum::<u64>();
                 debug!(
                     "check_file_size - filtered hard links in {:?}, removed {} hardlinks ({} -> {})",
@@ -438,37 +456,46 @@ impl DuplicateFinder {
         let non_cached_files_to_check: Vec<(u64, Vec<DuplicateEntry>)> = non_cached_files_to_check.into_iter().collect();
 
         debug!("Starting calculating prehash");
-        #[expect(clippy::type_complexity)]
-        let pre_hash_results: Vec<(u64, BTreeMap<String, Vec<DuplicateEntry>>, Vec<String>)> = non_cached_files_to_check
-            .into_par_iter()
-            .with_max_len(3) // Vectors and BTreeMaps for really big inputs, leave some jobs to 0 thread, to avoid that I minimized max tasks for each thread to 3, which improved performance
-            .map(|(size, vec_file_entry)| {
-                let mut hashmap_with_hash: BTreeMap<String, Vec<DuplicateEntry>> = Default::default();
-                let mut errors: Vec<String> = Vec::new();
+        let thread_number = self.get_thread_number().unwrap_or(0);
+        let prehashing_closure = || {
+            non_cached_files_to_check
+                .into_par_iter()
+                .with_max_len(3) // Vectors and BTreeMaps for really big inputs, leave some jobs to 0 thread, to avoid that I minimized max tasks for each thread to 3, which improved performance
+                .map(|(size, vec_file_entry)| {
+                    let mut hashmap_with_hash: BTreeMap<String, Vec<DuplicateEntry>> = Default::default();
+                    let mut errors: Vec<String> = Vec::new();
 
-                THREAD_BUFFER.with_borrow_mut(|buffer| {
-                    for mut file_entry in vec_file_entry {
-                        if check_if_stop_received(stop_flag) {
-                            return None;
-                        }
-                        match with_io_lock(&file_entry.path, || hash_calculation_limit(buffer, &file_entry, check_type, PREHASHING_BUFFER_SIZE, progress_handler.size_counter())) {
-
-                            Ok(hash_string) => {
-                                file_entry.hash = hash_string.clone();
-                                hashmap_with_hash.entry(hash_string).or_default().push(file_entry);
+                    THREAD_BUFFER.with_borrow_mut(|buffer| {
+                        for mut file_entry in vec_file_entry {
+                            if check_if_stop_received(stop_flag) {
+                                return None;
                             }
-                            Err(s) => errors.push(s),
+                            match with_io_lock(&file_entry.path, || hash_calculation_limit(buffer, &file_entry, check_type, PREHASHING_BUFFER_SIZE, progress_handler.size_counter())) {
+
+                                Ok(hash_string) => {
+                                    file_entry.hash = hash_string.clone();
+                                    hashmap_with_hash.entry(hash_string).or_default().push(file_entry);
+                                }
+                                Err(s) => errors.push(s),
+                            }
+                            progress_handler.increase_items(1);
                         }
-                        progress_handler.increase_items(1);
-                    }
 
-                    Some(())
-                })?;
+                        Some(())
+                    })?;
 
-                Some((size, hashmap_with_hash, errors))
-            })
-            .while_some()
-            .collect();
+                    Some((size, hashmap_with_hash, errors))
+                })
+                .while_some()
+                .collect()
+        };
+
+        #[expect(clippy::type_complexity)]
+        let pre_hash_results: Vec<(u64, BTreeMap<String, Vec<DuplicateEntry>>, Vec<String>)> = if thread_number > 0 {
+            rayon::ThreadPoolBuilder::new().num_threads(thread_number).build().unwrap().install(prehashing_closure)
+        } else {
+            prehashing_closure()
+        };
 
         debug!("Completed calculating prehash");
 
@@ -662,40 +689,50 @@ impl DuplicateFinder {
             "Starting full hashing of {} files",
             non_cached_files_to_check.iter().map(|(_size, v)| v.len() as u64).sum::<u64>()
         );
-        let mut full_hash_results: Vec<(u64, BTreeMap<String, Vec<DuplicateEntry>>, Vec<String>)> = non_cached_files_to_check
-            .into_par_iter()
-            .with_max_len(3)
-            .map(|(size, vec_file_entry)| {
-                let mut hashmap_with_hash: BTreeMap<String, Vec<DuplicateEntry>> = Default::default();
-                let mut errors: Vec<String> = Vec::new();
+        let thread_number = self.get_thread_number().unwrap_or(0);
+        let full_hashing_closure = || {
+            non_cached_files_to_check
+                .into_par_iter()
+                .with_max_len(3)
+                .map(|(size, vec_file_entry)| {
+                    let mut hashmap_with_hash: BTreeMap<String, Vec<DuplicateEntry>> = Default::default();
+                    let mut errors: Vec<String> = Vec::new();
 
-                THREAD_BUFFER.with_borrow_mut(|buffer| {
-                    for mut file_entry in vec_file_entry {
-                        if check_if_stop_received(stop_flag) {
-                            return None;
-                        }
-
-                        match with_io_lock(&file_entry.path, || hash_calculation(buffer, &file_entry, check_type, progress_handler.size_counter(), stop_flag)) {
-
-                            Ok(hash_string) => {
-                                if let Some(hash_string) = hash_string {
-                                    file_entry.hash = hash_string.clone();
-                                    hashmap_with_hash.entry(hash_string).or_default().push(file_entry);
-                                } else {
-                                    return None;
-                                }
+                    THREAD_BUFFER.with_borrow_mut(|buffer| {
+                        for mut file_entry in vec_file_entry {
+                            if check_if_stop_received(stop_flag) {
+                                return None;
                             }
-                            Err(s) => errors.push(s),
-                        }
-                        progress_handler.increase_items(1);
-                    }
-                    Some(())
-                })?;
 
-                Some((size, hashmap_with_hash, errors))
-            })
-            .while_some()
-            .collect();
+                            match with_io_lock(&file_entry.path, || hash_calculation(buffer, &file_entry, check_type, progress_handler.size_counter(), stop_flag)) {
+
+                                Ok(hash_string) => {
+                                    if let Some(hash_string) = hash_string {
+                                        file_entry.hash = hash_string.clone();
+                                        hashmap_with_hash.entry(hash_string).or_default().push(file_entry);
+                                    } else {
+                                        return None;
+                                    }
+                                }
+                                Err(s) => errors.push(s),
+                            }
+                            progress_handler.increase_items(1);
+                        }
+                        Some(())
+                    })?;
+
+                    Some((size, hashmap_with_hash, errors))
+                })
+                .while_some()
+                .collect()
+        };
+
+        let mut full_hash_results: Vec<(u64, BTreeMap<String, Vec<DuplicateEntry>>, Vec<String>)> = if thread_number > 0 {
+            rayon::ThreadPoolBuilder::new().num_threads(thread_number).build().unwrap().install(full_hashing_closure)
+        } else {
+            full_hashing_closure()
+        };
+
         debug!("Finished full hashing");
 
         // Even if clicked stop, save items to cache and show results

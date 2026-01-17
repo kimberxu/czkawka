@@ -28,8 +28,10 @@ use crate::tools::similar_images::{Hamming, ImHash, ImagesEntry, SIMILAR_VALUES,
 
 impl SimilarImages {
     pub fn new(params: SimilarImagesParameters) -> Self {
+        let mut common_data = CommonToolData::new(ToolType::SimilarImages);
+        common_data.thread_number = Some(4);
         Self {
-            common_data: CommonToolData::new(ToolType::SimilarImages),
+            common_data,
             information: Default::default(),
             bktree: BKTree::new(Hamming),
             similar_vectors: Vec::new(),
@@ -66,16 +68,25 @@ impl SimilarImages {
 
         match result {
             DirTraversalResult::SuccessFiles { grouped_file_entries, warnings } => {
-                self.images_to_check = grouped_file_entries
-                    .into_par_iter()
-                    .flat_map(if self.get_params().ignore_hard_links { |(_, fes)| fes } else { take_1_per_inode })
-                    .map(|fe| {
-                        let fe_str = fe.path.to_string_lossy().to_string();
-                        let image_entry = fe.into_images_entry();
+                let thread_number = self.get_thread_number().unwrap_or(0);
+                let check_closure = || {
+                    grouped_file_entries
+                        .into_par_iter()
+                        .flat_map(if self.get_params().ignore_hard_links { |(_, fes)| fes } else { take_1_per_inode })
+                        .map(|fe| {
+                            let fe_str = fe.path.to_string_lossy().to_string();
+                            let image_entry = fe.into_images_entry();
 
-                        (fe_str, image_entry)
-                    })
-                    .collect();
+                            (fe_str, image_entry)
+                        })
+                        .collect()
+                };
+
+                self.images_to_check = if thread_number > 0 {
+                    rayon::ThreadPoolBuilder::new().num_threads(thread_number).build().unwrap().install(check_closure)
+                } else {
+                    check_closure()
+                };
 
                 self.information.initial_found_files = self.images_to_check.len();
 
@@ -149,24 +160,33 @@ impl SimilarImages {
         );
 
         debug!("hash_images - start hashing images");
-        let (mut vec_file_entry, errors): (Vec<ImagesEntry>, Vec<String>) = non_cached_files_to_check
-            .into_par_iter()
-            .map(|(_s, file_entry)| {
-                if check_if_stop_received(stop_flag) {
-                    return None;
-                }
-                let size = file_entry.size;
-                let res = self.collect_image_file_entry(file_entry);
-                progress_handler.increase_items(1);
-                progress_handler.increase_size(size);
+        let thread_number = self.get_thread_number().unwrap_or(0);
+        let hash_closure = || {
+            non_cached_files_to_check
+                .into_par_iter()
+                .map(|(_s, file_entry)| {
+                    if check_if_stop_received(stop_flag) {
+                        return None;
+                    }
+                    let size = file_entry.size;
+                    let res = self.collect_image_file_entry(file_entry);
+                    progress_handler.increase_items(1);
+                    progress_handler.increase_size(size);
 
-                Some(res)
-            })
-            .while_some()
-            .partition_map(|res| match res {
-                Ok(entry) => itertools::Either::Left(entry),
-                Err(err) => itertools::Either::Right(err),
-            });
+                    Some(res)
+                })
+                .while_some()
+                .partition_map(|res| match res {
+                    Ok(entry) => itertools::Either::Left(entry),
+                    Err(err) => itertools::Either::Right(err),
+                })
+        };
+
+        let (mut vec_file_entry, errors): (Vec<ImagesEntry>, Vec<String>) = if thread_number > 0 {
+            rayon::ThreadPoolBuilder::new().num_threads(thread_number).build().unwrap().install(hash_closure)
+        } else {
+            hash_closure()
+        };
 
         self.common_data.text_messages.errors.extend(errors);
         debug!("hash_images - end hashing {} images", vec_file_entry.len());
@@ -329,41 +349,50 @@ impl SimilarImages {
         // With chunks we can save results to variables and later use such variables, to skip ones with too big difference
         // Not really helpful, when not finding almost any duplicates, but with bigger amount of them, this should help a lot
         let base_hashes_chunks = base_hashes.chunks(1000);
+        let thread_number = self.get_thread_number().unwrap_or(0);
         for chunk in base_hashes_chunks {
-            let partial_results = chunk
-                .into_par_iter()
-                .map(|hash_to_check| {
-                    progress_handler.increase_items(1);
+            let chunk_closure = || {
+                chunk
+                    .into_par_iter()
+                    .map(|hash_to_check| {
+                        progress_handler.increase_items(1);
 
-                    if check_if_stop_received(stop_flag) {
-                        return None;
-                    }
-                    let mut found_items = self
-                        .bktree
-                        .find(hash_to_check, tolerance)
-                        .filter(|(similarity, compared_hash)| {
-                            *similarity != 0 && !hashes_parents.contains_key(*compared_hash) && !hashes_with_multiple_images.contains(*compared_hash)
-                        })
-                        .filter(|(similarity, compared_hash)| {
-                            if let Some((_, other_similarity_with_parent)) = hashes_similarity.get(*compared_hash) {
-                                // If current hash is more similar to other hash than to current parent hash, then skip check earlier
-                                // Because there is no way to be more similar to other hash than to current parent hash
-                                if *similarity >= *other_similarity_with_parent {
-                                    return false;
+                        if check_if_stop_received(stop_flag) {
+                            return None;
+                        }
+                        let mut found_items = self
+                            .bktree
+                            .find(hash_to_check, tolerance)
+                            .filter(|(similarity, compared_hash)| {
+                                *similarity != 0 && !hashes_parents.contains_key(*compared_hash) && !hashes_with_multiple_images.contains(*compared_hash)
+                            })
+                            .filter(|(similarity, compared_hash)| {
+                                if let Some((_, other_similarity_with_parent)) = hashes_similarity.get(*compared_hash) {
+                                    // If current hash is more similar to other hash than to current parent hash, then skip check earlier
+                                    // Because there is no way to be more similar to other hash than to current parent hash
+                                    if *similarity >= *other_similarity_with_parent {
+                                        return false;
+                                    }
                                 }
-                            }
-                            true
-                        })
-                        .collect::<Vec<_>>();
+                                true
+                            })
+                            .collect::<Vec<_>>();
 
-                    // Sort by tolerance
-                    found_items.sort_unstable_by_key(|f| f.0);
-                    Some((hash_to_check, found_items))
-                })
-                .while_some()
-                // TODO - this filter move to into_par_iter above
-                .filter(|(original_hash, vec_similar_hashes)| !vec_similar_hashes.is_empty() || hashes_with_multiple_images.contains(*original_hash))
-                .collect::<Vec<_>>();
+                        // Sort by tolerance
+                        found_items.sort_unstable_by_key(|f| f.0);
+                        Some((hash_to_check, found_items))
+                    })
+                    .while_some()
+                    // TODO - this filter move to into_par_iter above
+                    .filter(|(original_hash, vec_similar_hashes)| !vec_similar_hashes.is_empty() || hashes_with_multiple_images.contains(*original_hash))
+                    .collect::<Vec<_>>()
+            };
+
+            let partial_results = if thread_number > 0 {
+                rayon::ThreadPoolBuilder::new().num_threads(thread_number).build().unwrap().install(chunk_closure)
+            } else {
+                chunk_closure()
+            };
 
             if check_if_stop_received(stop_flag) {
                 progress_handler.join_thread();

@@ -31,8 +31,10 @@ pub const VIDEO_THUMBNAILS_SUBFOLDER: &str = "video_thumbnails";
 
 impl SimilarVideos {
     pub fn new(params: SimilarVideosParameters) -> Self {
+        let mut common_data = CommonToolData::new(ToolType::SimilarVideos);
+        common_data.thread_number = Some(2);
         Self {
-            common_data: CommonToolData::new(ToolType::SimilarVideos),
+            common_data,
             information: Default::default(),
             similar_vectors: Vec::new(),
             videos_hashes: Default::default(),
@@ -59,11 +61,21 @@ impl SimilarVideos {
 
         match result {
             DirTraversalResult::SuccessFiles { grouped_file_entries, warnings } => {
-                self.videos_to_check = grouped_file_entries
-                    .into_par_iter()
-                    .flat_map(if self.get_params().ignore_hard_links { |(_, fes)| fes } else { take_1_per_inode })
-                    .map(|fe| (fe.path.to_string_lossy().to_string(), fe.into_videos_entry()))
-                    .collect();
+                let thread_number = self.get_thread_number().unwrap_or(0);
+                let check_closure = || {
+                    grouped_file_entries
+                        .into_par_iter()
+                        .flat_map(if self.get_params().ignore_hard_links { |(_, fes)| fes } else { take_1_per_inode })
+                        .map(|fe| (fe.path.to_string_lossy().to_string(), fe.into_videos_entry()))
+                        .collect()
+                };
+
+                self.videos_to_check = if thread_number > 0 {
+                    rayon::ThreadPoolBuilder::new().num_threads(thread_number).build().unwrap().install(check_closure)
+                } else {
+                    check_closure()
+                };
+
                 self.common_data.text_messages.warnings.extend(warnings);
                 debug!("check_files - Found {} video files.", self.videos_to_check.len());
                 WorkContinueStatus::Continue
@@ -275,29 +287,38 @@ impl SimilarVideos {
         );
 
         let non_cached_files_to_check: Vec<_> = non_cached_files_to_check.into_iter().map(|f| f.1).collect();
-        let mut vec_file_entry: Vec<VideosEntry> = non_cached_files_to_check
-            .into_par_iter()
-            .with_max_len(2)
-            .map(|file_entry| {
-                if check_if_stop_received(stop_flag) {
-                    return None;
-                }
+        let thread_number = self.get_thread_number().unwrap_or(0);
+        let sort_closure = || {
+            non_cached_files_to_check
+                .into_par_iter()
+                .with_max_len(2)
+                .map(|file_entry| {
+                    if check_if_stop_received(stop_flag) {
+                        return None;
+                    }
 
-                // Currently size is not too much relevant
-                // let size = file_entry.size;
-                let res = with_io_lock(&file_entry.path.clone(), || {
-                    let res = self.check_video_file_entry(file_entry);
-                    Self::read_video_properties(res)
-                });
+                    // Currently size is not too much relevant
+                    // let size = file_entry.size;
+                    let res = with_io_lock(&file_entry.path.clone(), || {
+                        let res = self.check_video_file_entry(file_entry);
+                        Self::read_video_properties(res)
+                    });
 
-                progress_handler.increase_items(1);
+                    progress_handler.increase_items(1);
 
-                // progress_handler.increase_size(size);
+                    // progress_handler.increase_size(size);
 
-                Some(res)
-            })
-            .while_some()
-            .collect::<Vec<VideosEntry>>();
+                    Some(res)
+                })
+                .while_some()
+                .collect::<Vec<VideosEntry>>()
+        };
+
+        let mut vec_file_entry: Vec<VideosEntry> = if thread_number > 0 {
+            rayon::ThreadPoolBuilder::new().num_threads(thread_number).build().unwrap().install(sort_closure)
+        } else {
+            sort_closure()
+        };
 
         progress_handler.join_thread();
 
@@ -375,37 +396,49 @@ impl SimilarVideos {
         }
         let thumbnail_video_percentage_from_start = self.params.thumbnail_video_percentage_from_start;
         let generate_grid_instead_of_single = self.params.generate_thumbnail_grid_instead_of_single;
-        let errors = self
-            .similar_vectors
-            .par_iter_mut()
-            .with_max_len(2)
-            .map(|vec_file_entry| {
-                let mut errs = Vec::new();
-                for file_entry in vec_file_entry {
-                    if check_if_stop_received(stop_flag) {
-                        return errs;
+
+        let thread_number = self.get_thread_number().unwrap_or(0);
+        let create_thumbnails_closure = || {
+            self.similar_vectors
+                .par_iter_mut()
+                .with_max_len(2)
+                .map(|vec_file_entry| {
+                    let mut errs = Vec::new();
+                    for file_entry in vec_file_entry {
+                        if check_if_stop_received(stop_flag) {
+                            return errs;
+                        }
+
+                        if let Err(e) = with_io_lock(&file_entry.path.clone(), || {
+                            Self::generate_thumbnail(
+                                stop_flag,
+                                file_entry,
+                                &thumbnails_dir,
+                                thumbnail_video_percentage_from_start,
+                                generate_grid_instead_of_single,
+                            )
+                        }) {
+                            errs.push(e);
+                        }
+
+                        progress_handler.increase_items(1);
                     }
 
-                    if let Err(e) = with_io_lock(&file_entry.path.clone(), || {
-                        Self::generate_thumbnail(
-                            stop_flag,
-                            file_entry,
-                            &thumbnails_dir,
-                            thumbnail_video_percentage_from_start,
-                            generate_grid_instead_of_single,
-                        )
-                    }) {
-                        errs.push(e);
-                    }
+                    errs
+                })
+                .flatten()
+                .collect::<Vec<String>>()
+        };
 
-
-                    progress_handler.increase_items(1);
-                }
-
-                errs
-            })
-            .flatten()
-            .collect::<Vec<String>>();
+        let errors = if thread_number > 0 {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(thread_number)
+                .build()
+                .unwrap()
+                .install(create_thumbnails_closure)
+        } else {
+            create_thumbnails_closure()
+        };
 
         self.common_data.text_messages.warnings.extend(errors);
 

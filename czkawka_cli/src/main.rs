@@ -428,6 +428,9 @@ where
     T: AllTraits,
 {
     set_number_of_threads(common_cli_items.thread_number);
+    if common_cli_items.thread_number > 0 {
+        component.set_thread_number(common_cli_items.thread_number);
+    }
 
     let mut included_directories = common_cli_items.directories.clone();
     if let Some(reference_directories) = reference_directories {

@@ -37,6 +37,7 @@ pub struct CommonToolData {
     pub(crate) use_reference_folders: bool,
     pub(crate) dry_run: bool,
     pub(crate) move_to_trash: bool,
+    pub(crate) thread_number: Option<usize>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -113,6 +114,7 @@ impl CommonToolData {
             use_reference_folders: false,
             dry_run: false,
             move_to_trash: false,
+            thread_number: None,
         }
     }
 }
@@ -239,6 +241,13 @@ pub trait CommonData {
     }
     fn get_move_to_trash(&self) -> bool {
         self.get_cd().move_to_trash
+    }
+
+    fn set_thread_number(&mut self, thread_number: usize) {
+        self.get_cd_mut().thread_number = if thread_number == 0 { None } else { Some(thread_number) };
+    }
+    fn get_thread_number(&self) -> Option<usize> {
+        self.get_cd().thread_number
     }
 
     fn set_included_directory(&mut self, included_directory: Vec<PathBuf>) {
