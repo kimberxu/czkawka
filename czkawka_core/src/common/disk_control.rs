@@ -7,11 +7,13 @@ use once_cell::sync::Lazy;
 /// 0: SSD (C:\, D:\) - Unlimited
 /// 1: HDD A (E:\) - Limit 1
 /// 2: HDD B (F:\) - Limit 1
-/// 3: Others - Limit 1 (Fallback)
+/// 3: HDD C (G:\) - Limit 1
+/// 4: Others - Limit 1 (Fallback)
 const DISK_SSD: usize = 0;
 const DISK_HDD_A: usize = 1;
 const DISK_HDD_B: usize = 2;
-const DISK_OTHER: usize = 3;
+const DISK_HDD_C: usize = 3;
+const DISK_OTHER: usize = 4;
 
 /// Limits per disk
 /// SSD: Essentially unlimited (999)
@@ -88,16 +90,17 @@ impl SimpleSemaphore {
 }
 
 struct DiskController {
-    semaphores: [SimpleSemaphore; 4],
+    semaphores: [SimpleSemaphore; 5],
 }
 
 impl DiskController {
     fn new() -> Self {
         Self {
             semaphores: [
-                SimpleSemaphore::new(1000), // SSD
-                SimpleSemaphore::new(1),    // HDD A
-                SimpleSemaphore::new(1),    // HDD B
+                SimpleSemaphore::new(1000), // SSD (C, D)
+                SimpleSemaphore::new(1),    // HDD A (E)
+                SimpleSemaphore::new(1),    // HDD B (F)
+                SimpleSemaphore::new(1),    // HDD C (G)
                 SimpleSemaphore::new(1),    // Other
             ],
         }
@@ -111,6 +114,8 @@ impl DiskController {
             DISK_HDD_A
         } else if path_str.starts_with("F:") {
             DISK_HDD_B
+        } else if path_str.starts_with("G:") {
+            DISK_HDD_C
         } else {
             DISK_OTHER
         }
