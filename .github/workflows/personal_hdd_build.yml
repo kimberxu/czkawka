@@ -1,9 +1,6 @@
 name: Build Personal HDD Optimized Version
 
 on:
-  push:
-    branches:
-      - personal-hdd-optimization
   workflow_dispatch:
 
 jobs:
