@@ -1,9 +1,6 @@
 name: Build Krokiet Feature Branch
 
 on:
-  push:
-    branches:
-      - feature/krokiet-improved-selection
   workflow_dispatch:
 
 jobs:
