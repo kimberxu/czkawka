@@ -71,7 +71,13 @@ impl SimilarVideos {
                 };
 
                 self.videos_to_check = if thread_number > 0 {
-                    rayon::ThreadPoolBuilder::new().num_threads(thread_number).build().unwrap().install(check_closure)
+                    match rayon::ThreadPoolBuilder::new().num_threads(thread_number).build() {
+                        Ok(pool) => pool.install(check_closure),
+                        Err(e) => {
+                            debug!("Failed to create thread pool: {e}");
+                            check_closure()
+                        }
+                    }
                 } else {
                     check_closure()
                 };
@@ -315,7 +321,13 @@ impl SimilarVideos {
         };
 
         let mut vec_file_entry: Vec<VideosEntry> = if thread_number > 0 {
-            rayon::ThreadPoolBuilder::new().num_threads(thread_number).build().unwrap().install(sort_closure)
+            match rayon::ThreadPoolBuilder::new().num_threads(thread_number).build() {
+                Ok(pool) => pool.install(sort_closure),
+                Err(e) => {
+                    debug!("Failed to create thread pool: {e}");
+                    sort_closure()
+                }
+            }
         } else {
             sort_closure()
         };
@@ -431,11 +443,13 @@ impl SimilarVideos {
         };
 
         let errors = if thread_number > 0 {
-            rayon::ThreadPoolBuilder::new()
-                .num_threads(thread_number)
-                .build()
-                .unwrap()
-                .install(create_thumbnails_closure)
+            match rayon::ThreadPoolBuilder::new().num_threads(thread_number).build() {
+                Ok(pool) => pool.install(create_thumbnails_closure),
+                Err(e) => {
+                    debug!("Failed to create thread pool: {e}");
+                    create_thumbnails_closure()
+                }
+            }
         } else {
             create_thumbnails_closure()
         };

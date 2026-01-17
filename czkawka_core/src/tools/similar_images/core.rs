@@ -83,7 +83,13 @@ impl SimilarImages {
                 };
 
                 self.images_to_check = if thread_number > 0 {
-                    rayon::ThreadPoolBuilder::new().num_threads(thread_number).build().unwrap().install(check_closure)
+                    match rayon::ThreadPoolBuilder::new().num_threads(thread_number).build() {
+                        Ok(pool) => pool.install(check_closure),
+                        Err(e) => {
+                            debug!("Failed to create thread pool: {e}");
+                            check_closure()
+                        }
+                    }
                 } else {
                     check_closure()
                 };
@@ -183,7 +189,13 @@ impl SimilarImages {
         };
 
         let (mut vec_file_entry, errors): (Vec<ImagesEntry>, Vec<String>) = if thread_number > 0 {
-            rayon::ThreadPoolBuilder::new().num_threads(thread_number).build().unwrap().install(hash_closure)
+            match rayon::ThreadPoolBuilder::new().num_threads(thread_number).build() {
+                Ok(pool) => pool.install(hash_closure),
+                Err(e) => {
+                    debug!("Failed to create thread pool: {e}");
+                    hash_closure()
+                }
+            }
         } else {
             hash_closure()
         };
@@ -389,7 +401,13 @@ impl SimilarImages {
             };
 
             let partial_results = if thread_number > 0 {
-                rayon::ThreadPoolBuilder::new().num_threads(thread_number).build().unwrap().install(chunk_closure)
+                match rayon::ThreadPoolBuilder::new().num_threads(thread_number).build() {
+                    Ok(pool) => pool.install(chunk_closure),
+                    Err(e) => {
+                        debug!("Failed to create thread pool: {e}");
+                        chunk_closure()
+                    }
+                }
             } else {
                 chunk_closure()
             };

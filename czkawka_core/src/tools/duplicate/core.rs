@@ -275,11 +275,13 @@ impl DuplicateFinder {
                 };
 
                 self.files_with_identical_size = if thread_number > 0 {
-                    rayon::ThreadPoolBuilder::new()
-                        .num_threads(thread_number)
-                        .build()
-                        .unwrap()
-                        .install(check_files_size_closure)
+                    match rayon::ThreadPoolBuilder::new().num_threads(thread_number).build() {
+                        Ok(pool) => pool.install(check_files_size_closure),
+                        Err(e) => {
+                            debug!("Failed to create thread pool with {thread_number} threads: {e}, falling back to global pool");
+                            check_files_size_closure()
+                        }
+                    }
                 } else {
                     check_files_size_closure()
                 };
@@ -492,7 +494,13 @@ impl DuplicateFinder {
 
         #[expect(clippy::type_complexity)]
         let pre_hash_results: Vec<(u64, BTreeMap<String, Vec<DuplicateEntry>>, Vec<String>)> = if thread_number > 0 {
-            rayon::ThreadPoolBuilder::new().num_threads(thread_number).build().unwrap().install(prehashing_closure)
+            match rayon::ThreadPoolBuilder::new().num_threads(thread_number).build() {
+                Ok(pool) => pool.install(prehashing_closure),
+                Err(e) => {
+                    debug!("Failed to create thread pool: {e}");
+                    prehashing_closure()
+                }
+            }
         } else {
             prehashing_closure()
         };
@@ -728,7 +736,13 @@ impl DuplicateFinder {
         };
 
         let mut full_hash_results: Vec<(u64, BTreeMap<String, Vec<DuplicateEntry>>, Vec<String>)> = if thread_number > 0 {
-            rayon::ThreadPoolBuilder::new().num_threads(thread_number).build().unwrap().install(full_hashing_closure)
+            match rayon::ThreadPoolBuilder::new().num_threads(thread_number).build() {
+                Ok(pool) => pool.install(full_hashing_closure),
+                Err(e) => {
+                    debug!("Failed to create thread pool: {e}");
+                    full_hashing_closure()
+                }
+            }
         } else {
             full_hashing_closure()
         };
