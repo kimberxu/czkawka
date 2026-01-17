@@ -217,17 +217,16 @@ pub enum ExifOrientation {
 pub(crate) fn get_rotation_from_exif(bytes: &[u8]) -> Result<Option<ExifOrientation>, nom_exif::Error> {
     let res = panic::catch_unwind(|| {
         let mut parser = MediaParser::new();
-        let ms = MediaSource::seekable_buffer(Cursor::new(bytes))?;
+        let ms = MediaSource::seekable(Cursor::new(bytes))?;
         if !ms.has_exif() {
             return Ok(None);
         }
         let exif_iter: ExifIter = parser.parse(ms)?;
         for exif_entry in exif_iter {
-            if exif_entry.tag() == Some(ExifTag::Orientation)
-                && let Some(value) = exif_entry.get_value()
-            {
-                return match value.to_string().as_str() {
-                    "1" => Ok(Some(ExifOrientation::Normal)),
+            if exif_entry.tag() == Some(ExifTag::Orientation) {
+                if let Some(value) = exif_entry.get_value() {
+                    return match value.to_string().as_str() {
+                        "1" => Ok(Some(ExifOrientation::Normal)),
                     "2" => Ok(Some(ExifOrientation::MirrorHorizontal)),
                     "3" => Ok(Some(ExifOrientation::Rotate180)),
                     "4" => Ok(Some(ExifOrientation::MirrorVertical)),
@@ -272,16 +271,16 @@ mod tests {
             assert!(normal_orientation == Some(ExifOrientation::Normal) || normal_orientation.is_none());
         }
 
-        if let Some(rotated_orientation) = rotated_exif
-            && rotated_orientation.is_some()
-        {
-            let raw_rotated = decode_normal_image(&fs::read(TEST_ROTATED_IMAGE).unwrap()).unwrap();
-            if rotated_orientation == Some(ExifOrientation::Rotate90CW) || rotated_orientation == Some(ExifOrientation::Rotate270CW) {
-                assert_eq!(raw_rotated.width(), 800);
-                assert_eq!(raw_rotated.height(), 400);
-            } else {
-                assert_eq!(raw_rotated.width(), 400);
-                assert_eq!(raw_rotated.height(), 800);
+        if let Some(rotated_orientation) = rotated_exif {
+            if rotated_orientation.is_some() {
+                let raw_rotated = decode_normal_image(&fs::read(TEST_ROTATED_IMAGE).unwrap()).unwrap();
+                if rotated_orientation == Some(ExifOrientation::Rotate90CW) || rotated_orientation == Some(ExifOrientation::Rotate270CW) {
+                    assert_eq!(raw_rotated.width(), 800);
+                    assert_eq!(raw_rotated.height(), 400);
+                } else {
+                    assert_eq!(raw_rotated.width(), 400);
+                    assert_eq!(raw_rotated.height(), 800);
+                }
             }
         }
     }
@@ -305,7 +304,7 @@ mod tests {
     fn test_error_handling() {
         get_dynamic_image_from_path("nonexistent.jpg").unwrap_err();
         decode_normal_image(&[]).unwrap_err();
-        get_rotation_from_exif("nonexistent.jpg").unwrap_err();
+        get_rotation_from_exif(&[]).unwrap_err();
     }
 
 }

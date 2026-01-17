@@ -285,7 +285,7 @@ impl SimilarVideos {
 
                 // Currently size is not too much relevant
                 // let size = file_entry.size;
-                let res = with_io_lock(&file_entry.path, || {
+                let res = with_io_lock(&file_entry.path.clone(), || {
                     let res = self.check_video_file_entry(file_entry);
                     Self::read_video_properties(res)
                 });
@@ -386,7 +386,7 @@ impl SimilarVideos {
                         return errs;
                     }
 
-                    if let Err(e) = with_io_lock(&file_entry.path, || {
+                    if let Err(e) = with_io_lock(&file_entry.path.clone(), || {
                         Self::generate_thumbnail(
                             stop_flag,
                             file_entry,
