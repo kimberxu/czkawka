@@ -11,6 +11,8 @@ jobs:
       # 1. 准备环境 (只做一次，省时)
       - name: 下载代码
         uses: actions/checkout@v4
+        with:
+          ref: personal-hdd-optimization
 
       - name: 配置 Rust 环境
         uses: dtolnay/rust-toolchain@stable
