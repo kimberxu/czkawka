@@ -1,0 +1,63 @@
+import { Button, VerticalBox } from "std-widgets.slint";
+import { ColorPalette } from "color_palette.slint";
+import { GuiState } from "gui_state.slint";
+import { Callabler } from "callabler.slint";
+
+export component PopupDirectorySelection inherits Rectangle {
+    callback show_popup();
+    callback close_popup();
+    in property <bool> is_other: false; // true = select other, false = select tree
+
+    popup_window := PopupWindow {
+        width: 400px;
+        height: 300px;
+        close-policy: PopupClosePolicy.close-on-click-outside;
+
+        Rectangle {
+            background: ColorPalette.popup_background;
+            border-radius: 5px;
+            border-width: 1px;
+            border-color: ColorPalette.text_color;
+
+            VerticalBox {
+                padding: 10px;
+                spacing: 5px;
+
+                Text {
+                    text: root.is_other ? "Select duplicates in OTHER directories:" : "Select duplicates in THIS directory tree:";
+                    font-size: 14px;
+                }
+
+                Flickable {
+                    viewport-height: (buttons_layout.preferred-height);
+                    buttons_layout := VerticalLayout {
+                        spacing: 5px;
+                        for path in GuiState.directory_selection_model : Button {
+                            text: path;
+                            clicked => {
+                                if (root.is_other) {
+                                    Callabler.select_other_confirm(path);
+                                } else {
+                                    Callabler.select_tree_confirm(path);
+                                }
+                                root.close_popup();
+                            }
+                        }
+                    }
+                }
+                
+                Button {
+                    text: "Cancel";
+                    clicked => { root.close_popup(); }
+                }
+            }
+        }
+    }
+
+    show_popup() => {
+        popup_window.show();
+    }
+    close_popup() => {
+        popup_window.close();
+    }
+}

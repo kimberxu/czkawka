@@ -1,0 +1,2 @@
+// Inside ActionButtons or MainWindow init, but simpler to do it via Callabler
+// We need to bind the callback in MainWindow init or via Callabler object in MainWindow

@@ -24,9 +24,11 @@ export component ActionButtons inherits HorizontalLayout {
     callback scan_starting(ActiveTab);
     callback show_select_popup(length, length);
     callback show_sort_popup(length, length);
+    callback show_advanced_select_popup();
     callback show_action_popup(PopupRequest);
 
     in-out property <[MainListModel]> duplicate_files_model: [];
+
     in-out property <[MainListModel]> empty_folder_model: [];
     in-out property <[MainListModel]> big_files_model: [];
     in-out property <[MainListModel]> empty_files_model: [];
@@ -124,7 +126,20 @@ export component ActionButtons inherits HorizontalLayout {
         }
     }
 
+    advanced_select_button := Button {
+        visible: lists_enabled;
+        height: parent.height;
+        enabled: base_buttons_may_be_available && self.visible;
+        text: self.visible && Settings.show_only_icons ? "" : "Adv."; // Translations.advanced_select_button_text
+        icon: @image-url("../icons/krokiet_select.svg"); // Reuse select icon for now
+        colorize-icon: true;
+        clicked => {
+            show_advanced_select_popup();
+        }
+    }
+
     move_button := Button {
+
         visible: lists_enabled;
         height: parent.height;
         enabled: base_buttons_may_be_available && self.visible && checked_anything;

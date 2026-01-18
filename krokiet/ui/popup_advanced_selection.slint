@@ -1,0 +1,138 @@
+import { Button, CheckBox, LineEdit, ScrollView, StandardListView, VerticalBox, HorizontalBox, TabWidget } from "std-widgets.slint";
+import { ColorPalette } from "color_palette.slint";
+import { GuiState } from "gui_state.slint";
+import { Callabler } from "callabler.slint";
+import { AdvancedSelectionCriterion } from "common.slint";
+
+export component PopupAdvancedSelection inherits Rectangle {
+    callback show_popup();
+    callback close_popup();
+    
+    in-out property <[AdvancedSelectionCriterion]> criteria: [
+        { name: "Modification Date", enabled: false, ascending: true, id: 0 },
+        { name: "Creation Date", enabled: false, ascending: true, id: 1 },
+        { name: "Size", enabled: false, ascending: true, id: 2 },
+        { name: "Filename Length", enabled: false, ascending: true, id: 3 },
+        { name: "Path Length", enabled: false, ascending: true, id: 4 },
+    ];
+    
+    in-out property <string> directory_path;
+    in-out property <bool> include_subdirs: true;
+
+    popup_window := PopupWindow {
+        width: 500px;
+        height: 500px;
+        close-policy: PopupClosePolicy.close-on-click-outside;
+
+        Rectangle {
+            background: ColorPalette.popup_background;
+            border-radius: 5px;
+            border-width: 1px;
+            border-color: ColorPalette.text_color;
+
+            VerticalBox {
+                padding: 10px;
+                spacing: 10px;
+
+                Text {
+                    text: "Advanced Selection Assistant";
+                    font-size: 16px;
+                    horizontal-alignment: center;
+                }
+
+                TabWidget {
+                    Tab {
+                        title: "Group Selection";
+                        VerticalBox {
+                            Text { text: "Select criteria (use arrows to prioritize):"; }
+                            
+                            for criterion[idx] in criteria : HorizontalLayout {
+                                spacing: 10px;
+                                CheckBox {
+                                    text: criterion.name;
+                                    checked: criterion.enabled;
+                                    toggled => {
+                                        criterion.enabled = self.checked;
+                                    }
+                                }
+                                Button {
+                                    text: criterion.ascending ? "Asc (Old/Small/Short)" : "Desc (New/Big/Long)";
+                                    clicked => {
+                                        criterion.ascending = !criterion.ascending;
+                                    }
+                                }
+                                Button {
+                                    text: "↑";
+                                    enabled: idx > 0;
+                                    clicked => {
+                                        let temp = root.criteria[idx - 1];
+                                        root.criteria[idx - 1] = root.criteria[idx];
+                                        root.criteria[idx] = temp;
+                                    }
+                                }
+                                Button {
+                                    text: "↓";
+                                    enabled: idx < root.criteria.length - 1;
+                                    clicked => {
+                                        let temp = root.criteria[idx + 1];
+                                        root.criteria[idx + 1] = root.criteria[idx];
+                                        root.criteria[idx] = temp;
+                                    }
+                                }
+                            }
+                            
+                            Button {
+                                text: "Select";
+                                clicked => {
+                                    Callabler.select_advanced_group(root.criteria);
+                                    root.close_popup();
+                                }
+                            }
+                        }
+                    }
+                    Tab {
+                        title: "Directory Selection";
+                        VerticalBox {
+                            Text { text: "Path:"; }
+                            LineEdit {
+                                text <=> root.directory_path;
+                                placeholder-text: "/path/to/folder";
+                            }
+                            CheckBox {
+                                text: "Include Subdirectories";
+                                checked <=> root.include_subdirs;
+                            }
+                            
+                            Button {
+                                text: "Select duplicates in OTHER directories";
+                                clicked => {
+                                    Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, true); // true = other
+                                    root.close_popup();
+                                }
+                            }
+                            Button {
+                                text: "Select duplicates in THIS directory";
+                                clicked => {
+                                    Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, false); // false = this
+                                    root.close_popup();
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                Button {
+                    text: "Close";
+                    clicked => { root.close_popup(); }
+                }
+            }
+        }
+    }
+
+    show_popup() => {
+        popup_window.show();
+    }
+    close_popup() => {
+        popup_window.close();
+    }
+}

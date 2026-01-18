@@ -1,5 +1,6 @@
-import { ActiveTab, SelectMode, SortColumnMode, SortMode } from "common.slint";
+import { ActiveTab, SelectMode, SortColumnMode, SortMode, AdvancedSelectionCriterion } from "common.slint";
 import { Palette } from "std-widgets.slint";
+
 import { Settings } from "settings.slint";
 
 export global Callabler {
@@ -67,4 +68,20 @@ export global Callabler {
     }
 
     callback change_sort_column_mode(SortColumnMode, int);
+
+    // Context Menu
+    callback copy_path(int);
+    callback select_tree_request(int);
+    callback select_other_request(int);
+    callback select_tree_confirm(string);
+    callback select_other_confirm(string);
+
+    // Rust -> Slint
+    callback show_directory_selection_popup(bool);
+
+    // Advanced Selection
+    callback select_advanced_custom_path(string, bool, bool);
+    callback select_advanced_group([AdvancedSelectionCriterion]);
 }
+
+

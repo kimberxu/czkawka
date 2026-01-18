@@ -88,11 +88,13 @@ export struct SelectModel {
     name: string
 }
 
-export enum SortMode {
-    FullName,
-    Selection,
-    Reverse
+export struct AdvancedSelectionCriterion {
+    name: string,
+    enabled: bool,
+    ascending: bool,
+    id: int, // 0=ModDate, 1=CreationDate, etc.
 }
+
 
 export struct SortModel {
     data: SortMode,

@@ -58,7 +58,10 @@ mod connect_size_of_config_cache;
 mod connect_sort;
 mod connect_stop;
 mod connect_translation;
+mod connect_context_menu;
+mod connect_advanced_selection;
 mod file_actions;
+
 mod localizer_krokiet;
 mod model_operations;
 mod set_initial_gui_info;
@@ -137,9 +140,12 @@ fn main() {
     connect_sort_column(&app);
     connect_showing_proper_sort_buttons(&app);
     connect_size_of_config_cache(&app);
+    connect_context_menu::connect_context_menu(&app);
+    connect_advanced_selection::connect_advanced_selection(&app);
     connect_show_confirmation(&app, Arc::clone(&shared_models));
 
     clear_outdated_video_thumbnails(&app);
+
 
     // Popups gather their size, after starting/closing popup at least once
     // This is simpler solution, than setting sizes of popups manually for each language

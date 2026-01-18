@@ -21,7 +21,10 @@ import { PopupActionConfirm } from "popup_action_confirm.slint";
 import { PopupCropVideo } from "popup_crop_video.slint";
 import { PopupReencodeVideo } from "popup_optimize.slint";
 import { PopupCleanExif } from "popup_clean_exif.slint";
+import { PopupDirectorySelection } from "popup_directory_selection.slint";
+import { PopupAdvancedSelection } from "popup_advanced_selection.slint";
 import { ToolSettings } from "tool_settings.slint";
+
 import { Translations } from "translations.slint";
 
 export {Settings, Callabler, GuiState, Translations, Palette}
@@ -121,7 +124,11 @@ export component MainWindow inherits Window {
                             visible: GuiState.preview_visible && !tool_settings.visible;
                             source: GuiState.preview_image;
                             image-fit: ImageFit.contain;
-                        }
+    Callabler.show_directory_selection_popup(is_other) => {
+        directory_selection_popup_window.is_other = is_other;
+        directory_selection_popup_window.show_popup();
+    }
+}
 
                         tool_settings := ToolSettings {
                             height: parent.height;
@@ -179,7 +186,11 @@ export component MainWindow inherits Window {
                 sort_popup_window.y_offset = y_offset;
                 sort_popup_window.show_popup();
             }
+            show_advanced_select_popup() => {
+                advanced_select_popup_window.show_popup();
+            }
         }
+
 
         HorizontalLayout {
             spacing: 5px;
@@ -338,7 +349,24 @@ export component MainWindow inherits Window {
         }
     }
 
+    directory_selection_popup_window := PopupDirectorySelection {
+        height: root.height;
+        width: root.width;
+        
+        x: parent.x + (root.width - self.popup_width) / 2.0;
+        y: parent.y + (parent.height - self.popup_height) / 2.0;
+    }
+
+    advanced_select_popup_window := PopupAdvancedSelection {
+        height: root.height;
+        width: root.width;
+        
+        x: parent.x + (root.width - self.popup_width) / 2.0;
+        y: parent.y + (parent.height - self.popup_height) / 2.0;
+    }
+
     scan_ended(scan_text) => {
+
         text_summary_text = scan_text;
         root.scanning = false;
         root.stop_requested = false;
@@ -359,6 +387,10 @@ export component MainWindow inherits Window {
         sort_popup_window.close_popup();
         select_popup_window.show_popup();
         select_popup_window.close_popup();
+        directory_selection_popup_window.show_popup();
+        directory_selection_popup_window.close_popup();
+        advanced_select_popup_window.show_popup();
+        advanced_select_popup_window.close_popup();
     }
 
     show_action_popup(request, data) => {
