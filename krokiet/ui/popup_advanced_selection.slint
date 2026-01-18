@@ -3,17 +3,18 @@ import { ColorPalette } from "color_palette.slint";
 import { GuiState } from "gui_state.slint";
 import { Callabler } from "callabler.slint";
 import { AdvancedSelectionCriterion } from "common.slint";
+import { Translations } from "translations.slint";
 
 export component PopupAdvancedSelection inherits Rectangle {
     callback show_popup();
     callback close_popup();
     
     in-out property <[AdvancedSelectionCriterion]> criteria: [
-        { name: "Modification Date", enabled: false, ascending: true, id: 0 },
-        { name: "Creation Date", enabled: false, ascending: true, id: 1 },
-        { name: "Size", enabled: false, ascending: true, id: 2 },
-        { name: "Filename Length", enabled: false, ascending: true, id: 3 },
-        { name: "Path Length", enabled: false, ascending: true, id: 4 },
+        { name: Translations.advanced_select_criteria_mod_date, enabled: false, ascending: true, id: 0 },
+        { name: Translations.advanced_select_criteria_creation_date, enabled: false, ascending: true, id: 1 },
+        { name: Translations.advanced_select_criteria_size, enabled: false, ascending: true, id: 2 },
+        { name: Translations.advanced_select_criteria_filename_len, enabled: false, ascending: true, id: 3 },
+        { name: Translations.advanced_select_criteria_path_len, enabled: false, ascending: true, id: 4 },
     ];
     
     in-out property <string> directory_path;
@@ -35,16 +36,16 @@ export component PopupAdvancedSelection inherits Rectangle {
                 spacing: 10px;
 
                 Text {
-                    text: "Advanced Selection Assistant";
+                    text: Translations.advanced_select_title;
                     font-size: 16px;
                     horizontal-alignment: center;
                 }
 
                 TabWidget {
                     Tab {
-                        title: "Group Selection";
+                        title: Translations.advanced_select_group_tab;
                         VerticalBox {
-                            Text { text: "Select criteria (use arrows to prioritize):"; }
+                            Text { text: Translations.advanced_select_group_criteria; }
                             
                             for criterion[idx] in criteria : HorizontalLayout {
                                 spacing: 10px;
@@ -56,7 +57,7 @@ export component PopupAdvancedSelection inherits Rectangle {
                                     }
                                 }
                                 Button {
-                                    text: criterion.ascending ? "Asc (Old/Small/Short)" : "Desc (New/Big/Long)";
+                                    text: criterion.ascending ? Translations.advanced_select_asc : Translations.advanced_select_desc;
                                     clicked => {
                                         criterion.ascending = !criterion.ascending;
                                     }
@@ -82,7 +83,7 @@ export component PopupAdvancedSelection inherits Rectangle {
                             }
                             
                             Button {
-                                text: "Select";
+                                text: Translations.advanced_select_button_select;
                                 clicked => {
                                     Callabler.select_advanced_group(root.criteria);
                                     root.close_popup();
@@ -91,27 +92,27 @@ export component PopupAdvancedSelection inherits Rectangle {
                         }
                     }
                     Tab {
-                        title: "Directory Selection";
+                        title: Translations.advanced_select_directory_tab;
                         VerticalBox {
-                            Text { text: "Path:"; }
+                            Text { text: Translations.advanced_select_directory_path; }
                             LineEdit {
                                 text <=> root.directory_path;
-                                placeholder-text: "/path/to/folder";
+                                placeholder-text: Translations.advanced_select_directory_placeholder;
                             }
                             CheckBox {
-                                text: "Include Subdirectories";
+                                text: Translations.advanced_select_include_subdirs;
                                 checked <=> root.include_subdirs;
                             }
                             
                             Button {
-                                text: "Select duplicates in OTHER directories";
+                                text: Translations.advanced_select_btn_other;
                                 clicked => {
                                     Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, true); // true = other
                                     root.close_popup();
                                 }
                             }
                             Button {
-                                text: "Select duplicates in THIS directory";
+                                text: Translations.advanced_select_btn_this;
                                 clicked => {
                                     Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, false); // false = this
                                     root.close_popup();
@@ -122,7 +123,7 @@ export component PopupAdvancedSelection inherits Rectangle {
                 }
                 
                 Button {
-                    text: "Close";
+                    text: Translations.advanced_select_close;
                     clicked => { root.close_popup(); }
                 }
             }

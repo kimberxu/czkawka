@@ -2,6 +2,7 @@ import { Button, VerticalBox } from "std-widgets.slint";
 import { ColorPalette } from "color_palette.slint";
 import { GuiState } from "gui_state.slint";
 import { Callabler } from "callabler.slint";
+import { Translations } from "translations.slint";
 
 export component PopupDirectorySelection inherits Rectangle {
     callback show_popup();
@@ -24,7 +25,7 @@ export component PopupDirectorySelection inherits Rectangle {
                 spacing: 5px;
 
                 Text {
-                    text: root.is_other ? "Select duplicates in OTHER directories:" : "Select duplicates in THIS directory tree:";
+                    text: root.is_other ? Translations.directory_select_title_other : Translations.directory_select_title_tree;
                     font-size: 14px;
                 }
 
@@ -47,7 +48,7 @@ export component PopupDirectorySelection inherits Rectangle {
                 }
                 
                 Button {
-                    text: "Cancel";
+                    text: Translations.directory_select_cancel;
                     clicked => { root.close_popup(); }
                 }
             }

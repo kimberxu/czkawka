@@ -336,3 +336,35 @@ hardlink_confirmation_text = Are you sure you want to create hardlinks for the s
 softlink_button_text = Softlink
 softlink_text = Create softlinks
 softlink_confirmation_text = Are you sure you want to create softlinks (symlinks) for the selected items?
+
+# Context Menu
+context_menu_open_path = Open File Path
+context_menu_copy_path = Copy File Path
+context_menu_select_tree = Select duplicates in tree...
+context_menu_select_other = Select duplicates in other...
+
+# Advanced Selection Popup
+advanced_select_button = Advanced Selection
+advanced_select_title = Advanced Selection Assistant
+advanced_select_group_tab = Group Selection
+advanced_select_group_criteria = Select criteria (use arrows to prioritize):
+advanced_select_criteria_mod_date = Modification Date
+advanced_select_criteria_creation_date = Creation Date
+advanced_select_criteria_size = Size
+advanced_select_criteria_filename_len = Filename Length
+advanced_select_criteria_path_len = Path Length
+advanced_select_asc = Ascending (Old/Small/Short)
+advanced_select_desc = Descending (New/Big/Long)
+advanced_select_button_select = Select
+advanced_select_directory_tab = Directory Selection
+advanced_select_directory_path = Path:
+advanced_select_directory_placeholder = /path/to/folder
+advanced_select_include_subdirs = Include Subdirectories
+advanced_select_btn_other = Select duplicates in OTHER directories
+advanced_select_btn_this = Select duplicates in THIS directory
+advanced_select_close = Close
+
+# Directory Selection Popup
+directory_select_title_other = Select duplicates in OTHER directories:
+directory_select_title_tree = Select duplicates in THIS directory tree:
+directory_select_cancel = Cancel

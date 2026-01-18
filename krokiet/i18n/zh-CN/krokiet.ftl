@@ -301,3 +301,35 @@ hardlink_confirmation_text = 您确定要为所选项目创建硬链接吗？
 softlink_button_text = 软链接
 softlink_text = 创建软链接
 softlink_confirmation_text = 您确定要为所选项目创建软链接（符号链接）吗？
+
+# Context Menu
+context_menu_open_path = 打开文件路径
+context_menu_copy_path = 复制文件路径
+context_menu_select_tree = 选中该目录树中与其它文件重复的文件...
+context_menu_select_other = 选中其它目录中与该目录树重复的文件...
+
+# Advanced Selection Popup
+advanced_select_button = 高级选择
+advanced_select_title = 高级选择助手
+advanced_select_group_tab = 按组选择
+advanced_select_group_criteria = 选择标准 (使用箭头调整优先级):
+advanced_select_criteria_mod_date = 修改日期
+advanced_select_criteria_creation_date = 创建日期
+advanced_select_criteria_size = 文件大小
+advanced_select_criteria_filename_len = 文件名长度
+advanced_select_criteria_path_len = 路径长度
+advanced_select_asc = 升序 (旧/小/短)
+advanced_select_desc = 降序 (新/大/长)
+advanced_select_button_select = 选择
+advanced_select_directory_tab = 按目录选择
+advanced_select_directory_path = 路径:
+advanced_select_directory_placeholder = /path/to/folder
+advanced_select_include_subdirs = 包含子目录
+advanced_select_btn_other = 选中【其它】目录中的重复文件
+advanced_select_btn_this = 选中【此】目录中的重复文件
+advanced_select_close = 关闭
+
+# Directory Selection Popup
+directory_select_title_other = 选择其它目录中的重复文件:
+directory_select_title_tree = 选择此目录树中的重复文件:
+directory_select_cancel = 取消
