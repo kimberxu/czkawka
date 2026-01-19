@@ -1,5 +1,6 @@
 name: Build Krokiet Manual
 
+# 核心配置：workflow_dispatch 允许你在 UI 上选择分支
 on:
   workflow_dispatch:
 
@@ -10,31 +11,46 @@ jobs:
   build-all:
     runs-on: windows-latest
     steps:
+      # 【修改点】：直接调用 checkout，去掉 ref 参数
+      # GitHub Action 会自动检出你在 "Run workflow" 弹窗中选择的分支
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # 1. 尝试恢复缓存
+      - name: Restore Cache
+        id: restore-cache
+        uses: actions/cache/restore@v4
         with:
-          toolchain: 1.92.0
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          # 注意：这里 hashFiles 会根据当前选中分支的 Cargo.lock 计算
+          key: ${{ runner.os }}-cargo-core-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Get short SHA
-        id: vars
-        shell: bash
-        run: |
-          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          safe_ref_name="${GITHUB_REF_NAME//\//-}"
-          echo "safe_ref_name=${safe_ref_name}" >> $GITHUB_OUTPUT
+      # 2. 编译 Core
+      - name: Build Core
+        run: cargo build --release -p czkawka_core
 
-      # 1. 编译 GUI - 仅构建兼容性最好的 OpenGL 版本 (带 Software 回退)
-      # 对齐 windows.yml 的 Rust 版本 (1.92.0)，但不开启 LTO 以加快手动构建速度
-      # 不使用 cargo-chef 和 缓存，以确保构建环境纯净，避免 broken exe 问题
-      - name: Build Krokiet (OpenGL + Software Fallback)
-        id: build-gui
-        run: |
-          cargo build --release --bin krokiet --no-default-features --features "winit_skia_opengl,winit_software"
-          mv target/release/krokiet.exe target/release/krokiet_opengl.exe
+      # 3. 保存 Core 缓存 (中间存档)
+      - name: Save Core Cache
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-core-${{ hashFiles('**/Cargo.lock') }}
 
-      # 2. 上传产物
+      # 4. 编译 GUI
+      - name: Build Krokiet (GUI)
+        run: cargo build --release --bin krokiet --no-default-features --features "winit_skia_opengl,winit_software"
+
+      # 5. 上传产物
+      # 建议：可以在名字里加上短 commit hash，区分不同版本的构建
       - uses: actions/upload-artifact@v4
-        if: success()
         with:
-          name: Krokiet_${{ steps.vars.outputs.safe_ref_name }}_${{ steps.vars.outputs.sha_short }}
-          path: target/release/krokiet_opengl.exe
+          name: Krokiet_Build_${{ github.sha }}
+          path: target/release/krokiet.exe
