@@ -46,7 +46,7 @@ export component MainWindow inherits Window {
     callback request_setup_action_popup(PopupRequest); // When opening popup we need to setup data in it, Slint -> Rust
     callback show_action_popup(PopupRequest, string); // After setup, we can show popup - Rust -> Slint - string is choosed folder - to avoid having multiple callbacks, string will be empty for things that do not need it
 
-    callback show_directory_selection_popup <=> Callabler.show_directory_selection_popup;
+    callback local_show_directory_selection_popup <=> Callabler.show_directory_selection_popup;
 
     title <=> Translations.main_window_title_text;
 
@@ -419,7 +419,7 @@ export component MainWindow inherits Window {
         }
     }
 
-    show_directory_selection_popup(is_other) => {
+    local_show_directory_selection_popup(is_other) => {
         directory_selection_popup_window.is_other = is_other;
         directory_selection_popup_window.show_popup();
     }

@@ -9,9 +9,12 @@ export component PopupDirectorySelection inherits Rectangle {
     callback close_popup();
     in property <bool> is_other: false; // true = select other, false = select tree
 
+    out property <length> popup_width: 400px;
+    out property <length> popup_height: 300px;
+
     popup_window := PopupWindow {
-        width: 400px;
-        height: 300px;
+        width: root.popup_width;
+        height: root.popup_height;
         close-policy: PopupClosePolicy.close-on-click-outside;
 
         Rectangle {

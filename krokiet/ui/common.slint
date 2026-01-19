@@ -95,6 +95,13 @@ export struct AdvancedSelectionCriterion {
     id: int, // 0=ModDate, 1=CreationDate, etc.
 }
 
+export enum SortMode {
+    FullName,
+    Selection,
+    Reverse
+}
+
+
 
 export struct SortModel {
     data: SortMode,

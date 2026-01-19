@@ -9,6 +9,9 @@ export component PopupAdvancedSelection inherits Rectangle {
     callback show_popup();
     callback close_popup();
     
+    out property <length> popup_width: 500px;
+    out property <length> popup_height: 500px;
+
     in-out property <[AdvancedSelectionCriterion]> criteria: [
         { name: Translations.advanced_select_criteria_mod_date, enabled: false, ascending: true, id: 0 },
         { name: Translations.advanced_select_criteria_creation_date, enabled: false, ascending: true, id: 1 },
@@ -21,8 +24,8 @@ export component PopupAdvancedSelection inherits Rectangle {
     in-out property <bool> include_subdirs: true;
 
     popup_window := PopupWindow {
-        width: 500px;
-        height: 500px;
+        width: root.popup_width;
+        height: root.popup_height;
         close-policy: PopupClosePolicy.close-on-click-outside;
 
         Rectangle {
