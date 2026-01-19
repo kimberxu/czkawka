@@ -124,10 +124,7 @@ export component MainWindow inherits Window {
                             visible: GuiState.preview_visible && !tool_settings.visible;
                             source: GuiState.preview_image;
                             image-fit: ImageFit.contain;
-    Callabler.show_directory_selection_popup(is_other) => {
-        directory_selection_popup_window.is_other = is_other;
-        directory_selection_popup_window.show_popup();
-    }
+
 }
 
                         tool_settings := ToolSettings {
@@ -418,5 +415,10 @@ export component MainWindow inherits Window {
         } else {
             debug("Unsupported popup request");
         }
+    }
+
+    Callabler.show_directory_selection_popup(is_other) => {
+        directory_selection_popup_window.is_other = is_other;
+        directory_selection_popup_window.show_popup();
     }
 }
