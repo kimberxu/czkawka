@@ -1,0 +1,56 @@
+name: Build Krokiet Manual
+
+# 核心配置：workflow_dispatch 允许你在 UI 上选择分支
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-all:
+    runs-on: windows-latest
+    steps:
+      # 【修改点】：直接调用 checkout，去掉 ref 参数
+      # GitHub Action 会自动检出你在 "Run workflow" 弹窗中选择的分支
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # 1. 尝试恢复缓存
+      - name: Restore Cache
+        id: restore-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          # 注意：这里 hashFiles 会根据当前选中分支的 Cargo.lock 计算
+          key: ${{ runner.os }}-cargo-core-${{ hashFiles('**/Cargo.lock') }}
+
+      # 2. 编译 Core
+      - name: Build Core
+        run: cargo build --release -p czkawka_core
+
+      # 3. 保存 Core 缓存 (中间存档)
+      - name: Save Core Cache
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-core-${{ hashFiles('**/Cargo.lock') }}
+
+      # 4. 编译 GUI
+      - name: Build Krokiet (GUI)
+        run: cargo build --release --bin krokiet --no-default-features --features "winit_skia_opengl,winit_software"
+
+      # 5. 上传产物
+      # 建议：可以在名字里加上短 commit hash，区分不同版本的构建
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Krokiet_Build_${{ github.sha }}
+          path: target/release/krokiet.exe
