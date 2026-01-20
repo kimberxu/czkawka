@@ -41,7 +41,7 @@ export component SelectableTableView inherits Rectangle {
     in-out property <int> context_menu_idx: -1;
 
     context_menu := SelectionPopup {
-        selected_index: root.context_menu_idx;
+        // No bindings here to avoid "Cannot access the inside of a PopupWindow from enclosing component"
     }
 
     VerticalBox {
@@ -134,6 +134,7 @@ export component SelectableTableView inherits Rectangle {
                             root.last_selected_idx = idx;
                             Callabler.row_reverse_single_unique_item(idx);
                             root.context_menu_idx = idx;
+                            context_menu.selected_index = idx; // Pass data imperatively
                             context_menu.x = self.absolute-position.x + self.mouse-x;
                             context_menu.y = self.absolute-position.y + self.mouse-y;
                             context_menu.show();
