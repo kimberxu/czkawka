@@ -134,8 +134,8 @@ export component SelectableTableView inherits Rectangle {
                         if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up) {
                             root.last_selected_idx = idx;
                             Callabler.row_reverse_single_unique_item(idx);
-                            context_menu.menu_x = self.absolute-position.x + event.mouse-x;
-                            context_menu.menu_y = self.absolute-position.y + event.mouse-y;
+                            context_menu.menu_x = self.absolute-position.x + self.mouse-x;
+                            context_menu.menu_y = self.absolute-position.y + self.mouse-y;
                             context_menu.show();
                         } else if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up) {
 
