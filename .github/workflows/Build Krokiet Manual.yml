@@ -11,13 +11,11 @@ jobs:
   build-all:
     runs-on: windows-latest
     steps:
-      # 【修改点】：直接调用 checkout，去掉 ref 参数
-      # GitHub Action 会自动检出你在 "Run workflow" 弹窗中选择的分支
       - uses: actions/checkout@v4
-
       - uses: dtolnay/rust-toolchain@stable
 
-      # 1. 尝试恢复缓存
+      # 1. 恢复缓存 (优化版)
+      # 逻辑：优先找 GUI 的缓存(包含依赖多)。如果找不到，再找 Core 的缓存做垫底。
       - name: Restore Cache
         id: restore-cache
         uses: actions/cache/restore@v4
@@ -26,15 +24,27 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          # 注意：这里 hashFiles 会根据当前选中分支的 Cargo.lock 计算
-          key: ${{ runner.os }}-cargo-core-${{ hashFiles('**/Cargo.lock') }}
+          # 优先尝试匹配 GUI 的缓存 Key
+          key: ${{ runner.os }}-cargo-gui-${{ hashFiles('**/Cargo.lock') }}
+          # 如果上面没匹配到，尝试匹配 Core 的 Key，作为基础加速
+          restore-keys: |
+            ${{ runner.os }}-cargo-core-
 
       # 2. 编译 Core
       - name: Build Core
         run: cargo build --release -p czkawka_core
 
-      # 3. 保存 Core 缓存 (中间存档)
-      - name: Save Core Cache
+      # 3. 编译 GUI (修改点：允许失败)
+      # 加上 continue-on-error，即使代码报错，也会继续执行下一步去保存缓存
+      - name: Build Krokiet (GUI)
+        id: build-gui
+        continue-on-error: true
+        run: cargo build --release --bin krokiet --no-default-features --features "winit_skia_opengl,winit_software"
+
+      # 4. 保存 GUI 缓存 (新增)
+      # 只要没有完美命中 GUI 缓存，就保存一份新的。
+      # 这样即使第3步代码写错了，编译好的 Skia/Slint 依赖库也会被存下来，下次不用重编。
+      - name: Save GUI Cache
         if: steps.restore-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
@@ -42,15 +52,22 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-core-${{ hashFiles('**/Cargo.lock') }}
+          # 使用专门的 GUI Key
+          key: ${{ runner.os }}-cargo-gui-${{ hashFiles('**/Cargo.lock') }}
 
-      # 4. 编译 GUI
-      - name: Build Krokiet (GUI)
-        run: cargo build --release --bin krokiet --no-default-features --features "winit_skia_opengl,winit_software"
+      # 5. 检查构建状态 (新增)
+      # 缓存存好了，现在回头检查第3步是否真的成功。如果失败，手动 exit 1 报错。
+      - name: Check Build Status
+        if: steps.build-gui.outcome != 'success'
+        run: |
+          echo "::error::GUI Build failed! check the logs above."
+          echo "However, cache has been saved to speed up the next run."
+          exit 1
 
-      # 5. 上传产物
-      # 建议：可以在名字里加上短 commit hash，区分不同版本的构建
+      # 6. 上传产物
+      # 只有编译成功才上传
       - uses: actions/upload-artifact@v4
+        if: steps.build-gui.outcome == 'success'
         with:
           name: Krokiet_Build_${{ github.sha }}
           path: target/release/krokiet.exe
