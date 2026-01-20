@@ -1,15 +1,11 @@
 import { Button, ListView } from "std-widgets.slint";
 import { ColorPalette } from "color_palette.slint";
 import { Translations } from "translations.slint";
+import { Callabler } from "callabler.slint";
 
 export component ContextMenu inherits PopupWindow {
     in property <bool> show_directory_options: true;
     in property <int> selected_index: -1;
-
-    callback open_path(int);
-    callback copy_path(int);
-    callback select_tree(int);
-    callback select_other(int);
 
     width: 300px; // Slightly wider for translations
     height: show_directory_options ? 140px : 70px;
@@ -26,19 +22,32 @@ export component ContextMenu inherits PopupWindow {
 
             Button {
                 text: Translations.context_menu_open_path;
-                clicked => { root.open_path(root.selected_index); root.close(); }
+                clicked => {
+                    Callabler.row_reverse_single_unique_item(root.selected_index);
+                    Callabler.row_open_parent_of_selected_item();
+                    root.close();
+                }
             }
             Button {
                 text: Translations.context_menu_copy_path;
-                clicked => { root.copy_path(root.selected_index); root.close(); }
+                clicked => {
+                    Callabler.copy_path(root.selected_index);
+                    root.close();
+                }
             }
             if show_directory_options : Button {
                 text: Translations.context_menu_select_tree;
-                clicked => { root.select_tree(root.selected_index); root.close(); }
+                clicked => {
+                    Callabler.select_tree_request(root.selected_index);
+                    root.close();
+                }
             }
             if show_directory_options : Button {
                 text: Translations.context_menu_select_other;
-                clicked => { root.select_other(root.selected_index); root.close(); }
+                clicked => {
+                    Callabler.select_other_request(root.selected_index);
+                    root.close();
+                }
             }
         }
     }
