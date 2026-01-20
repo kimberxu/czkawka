@@ -209,7 +209,7 @@ fn connect_select_tree_request(app: &MainWindow) {
             
             let model = Rc::new(VecModel::from(ancestors));
             app.global::<GuiState>().set_directory_selection_model(model.into());
-            app.global::<Callabler>().invoke_show_directory_selection_popup(false);
+            app.invoke_show_directory_selection_popup(false);
         }
     });
 }
@@ -230,7 +230,7 @@ fn connect_select_other_request(app: &MainWindow) {
             }
             let model = Rc::new(VecModel::from(ancestors));
             app.global::<GuiState>().set_directory_selection_model(model.into());
-            app.global::<Callabler>().invoke_show_directory_selection_popup(true);
+            app.invoke_show_directory_selection_popup(true);
         }
     });
 }
