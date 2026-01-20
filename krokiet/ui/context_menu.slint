@@ -3,51 +3,50 @@ import { ColorPalette } from "color_palette.slint";
 import { Translations } from "translations.slint";
 import { Callabler } from "callabler.slint";
 
-export component ContextMenu inherits PopupWindow {
+export component ContextMenu inherits Rectangle {
     in property <bool> show_directory_options: true;
     in property <int> selected_index: -1;
+    callback close_request();
 
     width: 300px; // Slightly wider for translations
     height: show_directory_options ? 140px : 70px;
 
-    Rectangle {
-        background: ColorPalette.popup_background;
-        border-radius: 4px;
-        border-width: 1px;
-        border-color: ColorPalette.text_color;
+    background: ColorPalette.popup_background;
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: ColorPalette.text_color;
 
-        VerticalLayout {
-            padding: 5px;
-            spacing: 5px;
+    VerticalLayout {
+        padding: 5px;
+        spacing: 5px;
 
-            Button {
-                text: Translations.context_menu_open_path;
-                clicked => {
-                    Callabler.row_reverse_single_unique_item(root.selected_index);
-                    Callabler.row_open_parent_of_selected_item();
-                    root.close();
-                }
+        Button {
+            text: Translations.context_menu_open_path;
+            clicked => {
+                Callabler.row_reverse_single_unique_item(root.selected_index);
+                Callabler.row_open_parent_of_selected_item();
+                root.close_request();
             }
-            Button {
-                text: Translations.context_menu_copy_path;
-                clicked => {
-                    Callabler.copy_path(root.selected_index);
-                    root.close();
-                }
+        }
+        Button {
+            text: Translations.context_menu_copy_path;
+            clicked => {
+                Callabler.copy_path(root.selected_index);
+                root.close_request();
             }
-            if show_directory_options : Button {
-                text: Translations.context_menu_select_tree;
-                clicked => {
-                    Callabler.select_tree_request(root.selected_index);
-                    root.close();
-                }
+        }
+        if show_directory_options : Button {
+            text: Translations.context_menu_select_tree;
+            clicked => {
+                Callabler.select_tree_request(root.selected_index);
+                root.close_request();
             }
-            if show_directory_options : Button {
-                text: Translations.context_menu_select_other;
-                clicked => {
-                    Callabler.select_other_request(root.selected_index);
-                    root.close();
-                }
+        }
+        if show_directory_options : Button {
+            text: Translations.context_menu_select_other;
+            clicked => {
+                Callabler.select_other_request(root.selected_index);
+                root.close_request();
             }
         }
     }
