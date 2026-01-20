@@ -6,7 +6,6 @@ import { FontSizes } from "fonts.slint";
 import { ContextMenu } from "context_menu.slint";
 
 export component SelectableTableView inherits Rectangle {
-    id: root;
     in property <[string]> columns;
 
     in-out property <[MainListModel]> values: [
