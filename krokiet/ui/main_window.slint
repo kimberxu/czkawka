@@ -418,10 +418,9 @@ export component MainWindow inherits Window {
         }
     }
 
-    init => {
-        Callabler.show_directory_selection_popup = (is_other) -> {
-            directory_selection_popup_window.is_other = is_other;
-            directory_selection_popup_window.show_popup();
-        };
+    callback show_directory_selection_popup(bool);
+    show_directory_selection_popup(is_other) => {
+        directory_selection_popup_window.is_other = is_other;
+        directory_selection_popup_window.show_popup();
     }
 }
