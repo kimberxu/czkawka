@@ -3,8 +3,6 @@ import { ColorPalette } from "color_palette.slint";
 import { Translations } from "translations.slint";
 
 export component ContextMenu inherits PopupWindow {
-    in property <length> menu_x;
-    in property <length> menu_y;
     in property <bool> show_directory_options: true;
 
     callback open_path();
@@ -12,8 +10,6 @@ export component ContextMenu inherits PopupWindow {
     callback select_tree();
     callback select_other();
 
-    x: menu_x;
-    y: menu_y;
     width: 300px; // Slightly wider for translations
     height: show_directory_options ? 140px : 70px;
 
