@@ -1,6 +1,5 @@
 name: Build Krokiet Manual
 
-# 核心配置：workflow_dispatch 允许你在 UI 上选择分支
 on:
   workflow_dispatch:
 
@@ -14,8 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
 
-      # 1. 恢复缓存 (优化版)
-      # 逻辑：优先找 GUI 的缓存(包含依赖多)。如果找不到，再找 Core 的缓存做垫底。
+      # 1. 恢复缓存 (策略升级：模糊匹配)
       - name: Restore Cache
         id: restore-cache
         uses: actions/cache/restore@v4
@@ -24,48 +22,47 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          # 优先尝试匹配 GUI 的缓存 Key
-          key: ${{ runner.os }}-cargo-gui-${{ hashFiles('**/Cargo.lock') }}
-          # 如果上面没匹配到，尝试匹配 Core 的 Key，作为基础加速
+          # 1. 优先尝试找“当前 Commit”的缓存 (几乎不可能命中，除非你Retry)
+          key: ${{ runner.os }}-cargo-gui-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
+          # 2. 【关键】找不到当前 Commit，就找“基于这个 Cargo.lock”的最近一次缓存
+          # 这样就能把上一次(哪怕是失败的)构建产物拉下来
           restore-keys: |
+            ${{ runner.os }}-cargo-gui-${{ hashFiles('**/Cargo.lock') }}-
             ${{ runner.os }}-cargo-core-
 
       # 2. 编译 Core
       - name: Build Core
         run: cargo build --release -p czkawka_core
 
-      # 3. 编译 GUI (修改点：允许失败)
-      # 加上 continue-on-error，即使代码报错，也会继续执行下一步去保存缓存
+      # 3. 编译 GUI (允许失败)
       - name: Build Krokiet (GUI)
         id: build-gui
         continue-on-error: true
         run: cargo build --release --bin krokiet --no-default-features --features "winit_skia_opengl,winit_software"
 
-      # 4. 保存 GUI 缓存 (新增)
-      # 只要没有完美命中 GUI 缓存，就保存一份新的。
-      # 这样即使第3步代码写错了，编译好的 Skia/Slint 依赖库也会被存下来，下次不用重编。
+      # 4. 保存 GUI 缓存 (策略升级：唯一 Key)
+      # 【关键修改】：Key 末尾加上了 github.sha
+      # 这样每次你提交代码/修改代码，Key 都是新的，绝对不会报 "Unable to reserve"
       - name: Save GUI Cache
-        if: steps.restore-cache.outputs.cache-hit != 'true'
+        if: always() # 只要到了这一步就尝试保存，不管前面是否命中
         uses: actions/cache/save@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             target
-          # 使用专门的 GUI Key
-          key: ${{ runner.os }}-cargo-gui-${{ hashFiles('**/Cargo.lock') }}
+          # 使用 Commit SHA 确保 Key 唯一，避免冲突
+          key: ${{ runner.os }}-cargo-gui-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
 
-      # 5. 检查构建状态 (新增)
-      # 缓存存好了，现在回头检查第3步是否真的成功。如果失败，手动 exit 1 报错。
+      # 5. 检查构建状态并报错
       - name: Check Build Status
         if: steps.build-gui.outcome != 'success'
         run: |
           echo "::error::GUI Build failed! check the logs above."
-          echo "However, cache has been saved to speed up the next run."
+          echo "Cache has been saved with SHA suffix to speed up next run."
           exit 1
 
       # 6. 上传产物
-      # 只有编译成功才上传
       - uses: actions/upload-artifact@v4
         if: steps.build-gui.outcome == 'success'
         with:
