@@ -49,13 +49,20 @@ jobs:
       - name: Build Core
         run: cargo build --release -p czkawka_core
 
-      # 5. 编译 GUI (这是你调试的地方，肯定会失败)
-      # 但此时 Slint 和 Skia 已经在 target/ 中编译好了
-      - name: Build Krokiet (GUI)
-        id: build-gui
+      # 5. 编译 GUI - 分别构建 OpenGL 和 Software 版本以避免兼容性问题
+      - name: Build Krokiet (OpenGL)
+        id: build-opengl
         continue-on-error: true
-        # 注意：这里不需要再 clean 或重新下载，Cargo 会直接复用上面的产物
-        run: cargo build --release --bin krokiet --no-default-features --features "winit_skia_opengl,winit_software"
+        run: |
+          cargo build --release --bin krokiet --no-default-features --features "winit_skia_opengl"
+          mv target/release/krokiet.exe target/release/krokiet_opengl.exe
+
+      - name: Build Krokiet (Software)
+        id: build-software
+        continue-on-error: true
+        run: |
+          cargo build --release --bin krokiet --no-default-features --features "winit_software"
+          mv target/release/krokiet.exe target/release/krokiet_software.exe
 
       # 6. 保存缓存
       # 只要 Cargo.lock 没变，就更新这一个 Key。
@@ -74,14 +81,16 @@ jobs:
 
       # 7. 检查状态
       - name: Check Build Status
-        if: steps.build-gui.outcome != 'success'
+        if: steps.build-opengl.outcome != 'success' && steps.build-software.outcome != 'success'
         run: |
-          echo "::error::GUI Build failed!"
+          echo "::error::Both GUI Builds failed!"
           exit 1
 
       # 8. 上传产物
       - uses: actions/upload-artifact@v4
-        if: steps.build-gui.outcome == 'success'
+        if: steps.build-opengl.outcome == 'success' || steps.build-software.outcome == 'success'
         with:
           name: Krokiet_Build_${{ github.sha }}
-          path: target/release/krokiet.exe
+          path: |
+            target/release/krokiet_opengl.exe
+            target/release/krokiet_software.exe
