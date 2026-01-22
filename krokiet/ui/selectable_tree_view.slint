@@ -6,15 +6,7 @@ import { FontSizes } from "fonts.slint";
 import { ContextMenu } from "context_menu.slint";
 
 
-component SelectionPopup inherits PopupWindow {
-    in property <int> selected_index;
-    callback close_request();
 
-    ContextMenu {
-        selected_index: selected_index;
-        close_request => { close_request(); }
-    }
-}
 
 export component SelectableTableView inherits Rectangle {
     in property <[string]> columns;
@@ -42,9 +34,11 @@ export component SelectableTableView inherits Rectangle {
 
     in-out property <int> context_menu_idx: -1;
 
-    context_menu := SelectionPopup {
-        selected_index: root.context_menu_idx;
-        close_request => { self.close(); }
+    context_menu := PopupWindow {
+        ContextMenu {
+            selected_index: root.context_menu_idx;
+            close_request => { context_menu.close(); }
+        }
     }
 
     VerticalBox {
