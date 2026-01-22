@@ -15,7 +15,9 @@ jobs:
 
       # 0. 快速安装 cargo-chef (使用 taiki-e 的 action 避免从源码编译 chef)
       - name: Install cargo-chef
-        uses: taiki-e/install-action@cargo-chef
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-chef
 
       # 1. 恢复缓存
       # 策略优化：
