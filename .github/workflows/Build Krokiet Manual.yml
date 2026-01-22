@@ -15,76 +15,18 @@ jobs:
         with:
           toolchain: 1.92.0
 
-      # 0. 快速安装 cargo-chef (使用 taiki-e 的 action 避免从源码编译 chef)
-      - name: Install cargo-chef
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-chef
-
-      # 1. 恢复缓存
-      # 策略优化：
-      # key: 包含 lockhash 和 recipehash (稍后生成)，确保依赖不变时缓存必中
-      # 我们先恢复基础环境，cargo-chef 会帮我们处理剩下的
-      - name: Restore Cache
-        id: restore-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          # 注意：调试期间去掉了 github.sha，这样只要 Cargo.lock 没变，就能命中同一个缓存
-          key: ${{ runner.os }}-cargo-gui-${{ hashFiles('**/Cargo.lock') }}
-
-      # 2. 准备 Recipe (计算依赖关系)
-      - name: Prepare Recipe
-        run: cargo chef prepare --recipe-path recipe.json
-
-      # 3. 关键步骤：编译依赖 (Cook)
-      # 这一步会下载并编译 slint, skia 等所有依赖，但不编译 krokiet 的 main.rs
-      # 因为只编译库文件，这步通常 100% 成功
-      - name: Cook Dependencies
-        run: |
-          cargo chef cook --release --recipe-path recipe.json --bin krokiet --no-default-features --features "winit_skia_opengl,winit_software"
-
-      # 4. 编译 Core (如果是独立 crate 且没被包含在 krokiet 依赖树里，否则 cargo chef 可能已经编译了它)
-      - name: Build Core
-        run: cargo build --release -p czkawka_core
-
-      # 5. 编译 GUI - 仅构建兼容性最好的 OpenGL 版本 (带 Software 回退)
+      # 1. 编译 GUI - 仅构建兼容性最好的 OpenGL 版本 (带 Software 回退)
       # 对齐 windows.yml 的 Rust 版本 (1.92.0)，但不开启 LTO 以加快手动构建速度
+      # 不使用 cargo-chef 和 缓存，以确保构建环境纯净，避免 broken exe 问题
       - name: Build Krokiet (OpenGL + Software Fallback)
         id: build-gui
-        continue-on-error: true
         run: |
           cargo build --release --bin krokiet --no-default-features --features "winit_skia_opengl,winit_software"
           mv target/release/krokiet.exe target/release/krokiet_opengl.exe
 
-      # 6. 保存缓存
-      # 只要 Cargo.lock 没变，就更新这一个 Key。
-      # 下次运行时，Restore Cache 会直接找到它，cargo chef cook 发现产物已存在，直接秒过。
-      - name: Save GUI Cache
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          # 使用与 Restore 相同的 Key，去掉 SHA 后缀以便复用
-          # 如果 actions/cache 提示 key 已存在无法保存也没关系，说明缓存已经是最新的了
-          key: ${{ runner.os }}-cargo-gui-${{ hashFiles('**/Cargo.lock') }}
-
-      # 7. 检查状态
-      - name: Check Build Status
-        if: steps.build-gui.outcome != 'success'
-        run: |
-          echo "::error::GUI Build failed!"
-          exit 1
-
-      # 8. 上传产物
+      # 2. 上传产物
       - uses: actions/upload-artifact@v4
-        if: steps.build-gui.outcome == 'success'
+        if: success()
         with:
           name: Krokiet_Build_${{ github.sha }}
           path: target/release/krokiet_opengl.exe
