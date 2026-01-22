@@ -43,7 +43,7 @@ export component SelectableTableView inherits Rectangle {
     in-out property <int> context_menu_idx: -1;
 
     context_menu := SelectionPopup {
-        selected_index <=> root.context_menu_idx;
+        selected_index: root.context_menu_idx;
         close_request => { self.close(); }
     }
 
