@@ -13,7 +13,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
 
-      # 1. 恢复缓存 (策略升级：模糊匹配)
+      # 0. 快速安装 cargo-chef (使用 taiki-e 的 action 避免从源码编译 chef)
+      - name: Install cargo-chef
+        uses: taiki-e/install-action@cargo-chef
+
+      # 1. 恢复缓存
+      # 策略优化：
+      # key: 包含 lockhash 和 recipehash (稍后生成)，确保依赖不变时缓存必中
+      # 我们先恢复基础环境，cargo-chef 会帮我们处理剩下的
       - name: Restore Cache
         id: restore-cache
         uses: actions/cache/restore@v4
@@ -22,47 +29,55 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          # 1. 优先尝试找“当前 Commit”的缓存 (几乎不可能命中，除非你Retry)
-          key: ${{ runner.os }}-cargo-gui-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
-          # 2. 【关键】找不到当前 Commit，就找“基于这个 Cargo.lock”的最近一次缓存
-          # 这样就能把上一次(哪怕是失败的)构建产物拉下来
-          restore-keys: |
-            ${{ runner.os }}-cargo-gui-${{ hashFiles('**/Cargo.lock') }}-
-            ${{ runner.os }}-cargo-core-
+          # 注意：调试期间去掉了 github.sha，这样只要 Cargo.lock 没变，就能命中同一个缓存
+          key: ${{ runner.os }}-cargo-gui-${{ hashFiles('**/Cargo.lock') }}
 
-      # 2. 编译 Core
+      # 2. 准备 Recipe (计算依赖关系)
+      - name: Prepare Recipe
+        run: cargo chef prepare --recipe-path recipe.json
+
+      # 3. 关键步骤：编译依赖 (Cook)
+      # 这一步会下载并编译 slint, skia 等所有依赖，但不编译 krokiet 的 main.rs
+      # 因为只编译库文件，这步通常 100% 成功
+      - name: Cook Dependencies
+        run: |
+          cargo chef cook --release --recipe-path recipe.json --bin krokiet --no-default-features --features "winit_skia_opengl,winit_software"
+
+      # 4. 编译 Core (如果是独立 crate 且没被包含在 krokiet 依赖树里，否则 cargo chef 可能已经编译了它)
       - name: Build Core
         run: cargo build --release -p czkawka_core
 
-      # 3. 编译 GUI (允许失败)
+      # 5. 编译 GUI (这是你调试的地方，肯定会失败)
+      # 但此时 Slint 和 Skia 已经在 target/ 中编译好了
       - name: Build Krokiet (GUI)
         id: build-gui
         continue-on-error: true
+        # 注意：这里不需要再 clean 或重新下载，Cargo 会直接复用上面的产物
         run: cargo build --release --bin krokiet --no-default-features --features "winit_skia_opengl,winit_software"
 
-      # 4. 保存 GUI 缓存 (策略升级：唯一 Key)
-      # 【关键修改】：Key 末尾加上了 github.sha
-      # 这样每次你提交代码/修改代码，Key 都是新的，绝对不会报 "Unable to reserve"
+      # 6. 保存缓存
+      # 只要 Cargo.lock 没变，就更新这一个 Key。
+      # 下次运行时，Restore Cache 会直接找到它，cargo chef cook 发现产物已存在，直接秒过。
       - name: Save GUI Cache
-        if: always() # 只要到了这一步就尝试保存，不管前面是否命中
+        if: always()
         uses: actions/cache/save@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             target
-          # 使用 Commit SHA 确保 Key 唯一，避免冲突
-          key: ${{ runner.os }}-cargo-gui-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
+          # 使用与 Restore 相同的 Key，去掉 SHA 后缀以便复用
+          # 如果 actions/cache 提示 key 已存在无法保存也没关系，说明缓存已经是最新的了
+          key: ${{ runner.os }}-cargo-gui-${{ hashFiles('**/Cargo.lock') }}
 
-      # 5. 检查构建状态并报错
+      # 7. 检查状态
       - name: Check Build Status
         if: steps.build-gui.outcome != 'success'
         run: |
-          echo "::error::GUI Build failed! check the logs above."
-          echo "Cache has been saved with SHA suffix to speed up next run."
+          echo "::error::GUI Build failed!"
           exit 1
 
-      # 6. 上传产物
+      # 8. 上传产物
       - uses: actions/upload-artifact@v4
         if: steps.build-gui.outcome == 'success'
         with:
