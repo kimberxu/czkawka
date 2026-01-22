@@ -5,13 +5,7 @@ import { Callabler } from "callabler.slint";
 import { FontSizes } from "fonts.slint";
 import { ContextMenu } from "context_menu.slint";
 
-component SelectionPopup inherits PopupWindow {
-    in property <int> selected_index;
-    ContextMenu {
-        selected_index: root.selected_index;
-        close_request => { root.close(); }
-    }
-}
+
 
 
 export component SelectableTableView inherits Rectangle {
@@ -40,8 +34,15 @@ export component SelectableTableView inherits Rectangle {
 
     in-out property <int> context_menu_idx: -1;
 
-    context_menu := SelectionPopup {
-        selected_index: root.context_menu_idx;
+    context_menu := PopupWindow {
+        ContextMenu {
+            selected_index: root.context_menu_idx;
+            close_request => { root.close_context_menu(); }
+        }
+    }
+
+    function close_context_menu() {
+        context_menu.close();
     }
 
     VerticalBox {
