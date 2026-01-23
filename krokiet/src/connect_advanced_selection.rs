@@ -12,14 +12,13 @@ pub fn connect_advanced_selection(app: &MainWindow) {
 
 fn connect_select_advanced_custom_path(app: &MainWindow) {
     let a = app.as_weak();
-    app.global::<Callabler>().on_select_advanced_custom_path(move |path, include_subdirs, is_other| {
+    app.global::<Callabler>().on_select_advanced_custom_path(move |path, include_subdirs, mode| {
         let app = a.upgrade().unwrap();
-        let select_inside = !is_other;
-        select_by_path(&app, &path, include_subdirs, select_inside);
+        select_by_path(&app, &path, include_subdirs, mode);
     });
 }
 
-fn select_by_path(app: &MainWindow, filter_path: &str, include_subdirs: bool, select_inside: bool) {
+fn select_by_path(app: &MainWindow, filter_path: &str, include_subdirs: bool, mode: i32) {
     let active_tab = app.global::<GuiState>().get_active_tab();
     let model = active_tab.get_tool_model(app);
     let path_idx = active_tab.get_str_path_idx();
@@ -93,37 +92,55 @@ fn select_by_path(app: &MainWindow, filter_path: &str, include_subdirs: bool, se
             }
         }
 
-        if select_inside {
-            // Select Match (Delete inside)
-            for idx in indices_match {
-                if !old_data[idx].checked {
-                    old_data[idx].checked = true;
-                    checked_count_change += 1;
-                }
-            }
-            for idx in indices_not_match {
-                if old_data[idx].checked {
-                    old_data[idx].checked = false;
-                    checked_count_change -= 1;
-                }
-            }
-        } else {
-            // Select Other (Delete outside, Keep inside)
-            // SAFETY: Only if we have a match inside to keep!
-            if group_has_match {
-                for idx in indices_not_match {
+        match mode {
+            0 => { // Select This (Check Match, Uncheck Not Match)
+                for idx in indices_match {
                     if !old_data[idx].checked {
                         old_data[idx].checked = true;
                         checked_count_change += 1;
                     }
                 }
+                for idx in indices_not_match {
+                    if old_data[idx].checked {
+                        old_data[idx].checked = false;
+                        checked_count_change -= 1;
+                    }
+                }
+            },
+            1 => { // Select Other (Check Not Match, Uncheck Match)
+                // SAFETY: Only if we have a match inside to keep!
+                if group_has_match {
+                    for idx in indices_not_match {
+                        if !old_data[idx].checked {
+                            old_data[idx].checked = true;
+                            checked_count_change += 1;
+                        }
+                    }
+                    for idx in indices_match {
+                        if old_data[idx].checked {
+                            old_data[idx].checked = false;
+                            checked_count_change -= 1;
+                        }
+                    }
+                }
+            },
+            2 => { // Uncheck This (Uncheck Match)
                 for idx in indices_match {
                     if old_data[idx].checked {
                         old_data[idx].checked = false;
                         checked_count_change -= 1;
                     }
                 }
-            }
+            },
+            3 => { // Uncheck Other (Uncheck Not Match)
+                for idx in indices_not_match {
+                    if old_data[idx].checked {
+                        old_data[idx].checked = false;
+                        checked_count_change -= 1;
+                    }
+                }
+            },
+            _ => {}
         }
     }
     

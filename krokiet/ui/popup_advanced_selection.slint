@@ -64,10 +64,7 @@ export component PopupAdvancedSelection inherits Rectangle {
                             spacing: 10px;
                             CheckBox {
                                 text: criterion.name;
-                                checked: criterion.enabled;
-                                toggled => {
-                                    criterion.enabled = self.checked;
-                                }
+                                checked <=> root.criteria[idx].enabled;
                             }
                             Button {
                                 text: criterion.ascending ? 
@@ -107,14 +104,7 @@ export component PopupAdvancedSelection inherits Rectangle {
                         
                         HorizontalLayout {
                             spacing: 10px;
-                            Button {
-                                text: Translations.selection_deselect_all_text;
-                                clicked => { Callabler.reset_selection(GuiState.active_tab); }
-                            }
-                            Button {
-                                text: Translations.selection_invert_selection_text;
-                                clicked => { Callabler.row_reverse_checked_selection(); }
-                            }
+                            // Buttons moved to bottom
                         }
 
                         Button {
@@ -140,24 +130,56 @@ export component PopupAdvancedSelection inherits Rectangle {
                             checked <=> root.include_subdirs;
                         }
                         
-                        Button {
-                            text: Translations.advanced_select_btn_other;
-                            clicked => {
-                                Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, true); // true = other
-                                root.close_popup();
+                        HorizontalLayout {
+                            spacing: 10px;
+                            Button {
+                                text: Translations.advanced_select_btn_other;
+                                clicked => {
+                                    Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, 1); // 1 = select other
+                                    root.close_popup();
+                                }
+                            }
+                            Button {
+                                text: Translations.advanced_select_btn_this;
+                                clicked => {
+                                    Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, 0); // 0 = select this
+                                    root.close_popup();
+                                }
                             }
                         }
-                        Button {
-                            text: Translations.advanced_select_btn_this;
-                            clicked => {
-                                Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, false); // false = this
-                                root.close_popup();
+                        HorizontalLayout {
+                            spacing: 10px;
+                            Button {
+                                text: "Uncheck Other"; // TODO: Translation
+                                clicked => {
+                                    Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, 3); // 3 = uncheck other
+                                    root.close_popup();
+                                }
+                            }
+                            Button {
+                                text: "Uncheck This"; // TODO: Translation
+                                clicked => {
+                                    Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, 2); // 2 = uncheck this
+                                    root.close_popup();
+                                }
                             }
                         }
                     }
                 }
             }
             
+            HorizontalLayout {
+                spacing: 10px;
+                Button {
+                    text: Translations.selection_deselect_all_text;
+                    clicked => { Callabler.reset_selection(GuiState.active_tab); }
+                }
+                Button {
+                    text: Translations.selection_invert_selection_text;
+                    clicked => { Callabler.row_reverse_checked_selection(); }
+                }
+            }
+
             Button {
                 text: Translations.advanced_select_close;
                 clicked => { root.close_popup(); }
