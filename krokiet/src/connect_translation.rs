@@ -371,6 +371,27 @@ fn translate_items(app: &MainWindow) {
     translation.set_clean_exif_overwrite_files_text(flk!("clean_exif_overwrite_files_text").into());
     translation.set_subsettings_broken_files_video_info_text(flk!("subsettings_broken_files_video_info").into());
 
+    // Advanced Selection
+    translation.set_advanced_select_button(flk!("advanced_select_button").into());
+    translation.set_advanced_select_title(flk!("advanced_select_title").into());
+    translation.set_advanced_select_group_tab(flk!("advanced_select_group_tab").into());
+    translation.set_advanced_select_group_criteria(flk!("advanced_select_group_criteria").into());
+    translation.set_advanced_select_criteria_mod_date(flk!("advanced_select_criteria_mod_date").into());
+    translation.set_advanced_select_criteria_creation_date(flk!("advanced_select_criteria_creation_date").into());
+    translation.set_advanced_select_criteria_size(flk!("advanced_select_criteria_size").into());
+    translation.set_advanced_select_criteria_filename_len(flk!("advanced_select_criteria_filename_len").into());
+    translation.set_advanced_select_criteria_path_len(flk!("advanced_select_criteria_path_len").into());
+    translation.set_advanced_select_asc(flk!("advanced_select_asc").into());
+    translation.set_advanced_select_desc(flk!("advanced_select_desc").into());
+    translation.set_advanced_select_button_select(flk!("advanced_select_button_select").into());
+    translation.set_advanced_select_directory_tab(flk!("advanced_select_directory_tab").into());
+    translation.set_advanced_select_directory_path(flk!("advanced_select_directory_path").into());
+    translation.set_advanced_select_directory_placeholder(flk!("advanced_select_directory_placeholder").into());
+    translation.set_advanced_select_include_subdirs(flk!("advanced_select_include_subdirs").into());
+    translation.set_advanced_select_btn_other(flk!("advanced_select_btn_other").into());
+    translation.set_advanced_select_btn_this(flk!("advanced_select_btn_this").into());
+    translation.set_advanced_select_close(flk!("advanced_select_close").into());
+
     let tools_model: [(SharedString, ActiveTab); TOOLS_NUMBER] = [
         (flk!("tool_duplicate_files").into(), ActiveTab::DuplicateFiles),
         (flk!("tool_empty_folders").into(), ActiveTab::EmptyFolders),
