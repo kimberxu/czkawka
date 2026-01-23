@@ -41,8 +41,11 @@ export component SelectableTableView inherits Rectangle {
         }
     }
 
-    function close_context_menu() {
-        context_menu.close();
+    function show_context_menu(x: length, y: length, idx: int) {
+        root.context_menu_idx = idx;
+        context_menu.x = x;
+        context_menu.y = y;
+        context_menu.show();
     }
 
     VerticalBox {
@@ -134,10 +137,7 @@ export component SelectableTableView inherits Rectangle {
                         if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up) {
                             root.last_selected_idx = idx;
                             Callabler.row_reverse_single_unique_item(idx);
-                            root.context_menu_idx = idx;
-                            context_menu.x = self.absolute-position.x + self.mouse-x;
-                            context_menu.y = self.absolute-position.y + self.mouse-y;
-                            context_menu.show();
+                            root.show_context_menu(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y, idx);
                         } else if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up) {
 
                             if (event.modifiers.control) {
