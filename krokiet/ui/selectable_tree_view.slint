@@ -34,22 +34,23 @@ export component SelectableTableView inherits Rectangle {
 
     in-out property <int> context_menu_idx: -1;
 
+    private property <length> menu_x;
+    private property <length> menu_y;
+
     context_menu := PopupWindow {
+        x: root.menu_x;
+        y: root.menu_y;
         ContextMenu {
             selected_index: root.context_menu_idx;
-            close_request => { root.close_context_menu(); }
+            close_request => { context_menu.close(); }
         }
     }
 
     function show_context_menu(x: length, y: length, idx: int) {
         root.context_menu_idx = idx;
-        context_menu.x = x;
-        context_menu.y = y;
+        root.menu_x = x;
+        root.menu_y = y;
         context_menu.show();
-    }
-
-    function close_context_menu() {
-        context_menu.close();
     }
 
     VerticalBox {
