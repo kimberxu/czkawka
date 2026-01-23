@@ -40,7 +40,7 @@ fn select_by_path(app: &MainWindow, filter_path: &str, include_subdirs: bool, se
                 continue;
             }
             
-            let path = row.val_str.iter().nth(path_idx).cloned().unwrap_or_default();
+            let path = row.val_str.iter().nth(path_idx).unwrap_or_default();
             // let name = row.val_str.iter().nth(name_idx).cloned().unwrap_or_default();
             
             // Path in model is usually the directory containing the file.
@@ -138,24 +138,24 @@ fn select_by_criteria(app: &MainWindow, criteria: &[AdvancedSelectionCriterion])
             for criterion in &active_criteria {
                 let ordering = match criterion.id {
                     0 => { // Modification Date
-                        let val_a = connect_i32_into_u64(row_a.val_int[date_idx], row_a.val_int[date_idx+1]);
-                        let val_b = connect_i32_into_u64(row_b.val_int[date_idx], row_b.val_int[date_idx+1]);
+                        let val_a = connect_i32_into_u64(row_a.val_int.row_data(date_idx).unwrap_or_default(), row_a.val_int.row_data(date_idx+1).unwrap_or_default());
+                        let val_b = connect_i32_into_u64(row_b.val_int.row_data(date_idx).unwrap_or_default(), row_b.val_int.row_data(date_idx+1).unwrap_or_default());
                         val_a.cmp(&val_b)
                     },
                     1 => Ordering::Equal, // Creation Date not supported
                     2 => { // Size
-                        let val_a = connect_i32_into_u64(row_a.val_int[size_idx], row_a.val_int[size_idx+1]);
-                        let val_b = connect_i32_into_u64(row_b.val_int[size_idx], row_b.val_int[size_idx+1]);
+                        let val_a = connect_i32_into_u64(row_a.val_int.row_data(size_idx).unwrap_or_default(), row_a.val_int.row_data(size_idx+1).unwrap_or_default());
+                        let val_b = connect_i32_into_u64(row_b.val_int.row_data(size_idx).unwrap_or_default(), row_b.val_int.row_data(size_idx+1).unwrap_or_default());
                         val_a.cmp(&val_b)
                     },
                     3 => { // Filename Length
-                        let name_a = &row_a.val_str[name_idx];
-                        let name_b = &row_b.val_str[name_idx];
+                        let name_a = &row_a.val_str.row_data(name_idx).unwrap_or_default();
+                        let name_b = &row_b.val_str.row_data(name_idx).unwrap_or_default();
                         name_a.len().cmp(&name_b.len())
                     },
                     4 => { // Path Length
-                        let path_a = &row_a.val_str[path_idx];
-                        let path_b = &row_b.val_str[path_idx];
+                        let path_a = &row_a.val_str.row_data(path_idx).unwrap_or_default();
+                        let path_b = &row_b.val_str.row_data(path_idx).unwrap_or_default();
                         path_a.len().cmp(&path_b.len())
                     },
                     _ => Ordering::Equal,

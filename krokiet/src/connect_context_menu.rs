@@ -162,8 +162,8 @@ fn get_path_from_idx(app: &MainWindow, idx: usize) -> Option<String> {
         return None;
     }
 
-    let path = row.val_str.iter().nth(path_idx).cloned().unwrap_or_default();
-    let name = row.val_str.iter().nth(name_idx).cloned().unwrap_or_default();
+    let path = row.val_str.iter().nth(path_idx).unwrap_or_default();
+    let name = row.val_str.iter().nth(name_idx).unwrap_or_default();
     
     let full_path = if name.is_empty() {
         path.to_string()
@@ -267,7 +267,7 @@ fn select_by_path(app: &MainWindow, filter_path: &str, select_inside: bool) {
                 continue;
             }
             
-            let path = row.val_str.iter().nth(path_idx).cloned().unwrap_or_default();
+            let path = row.val_str.iter().nth(path_idx).unwrap_or_default();
             
             let is_inside = path.starts_with(filter_path);
             

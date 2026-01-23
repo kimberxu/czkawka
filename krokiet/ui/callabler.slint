@@ -76,6 +76,12 @@ export global Callabler {
     callback select_tree_confirm(string);
     callback select_other_confirm(string);
 
+    callback context_open_file(int);
+    callback context_open_folder(int);
+    callback context_select_in_folder(int);
+    callback context_select_other_folders(int);
+    callback context_protect_folder(int);
+
     // Rust -> Slint
     callback show_directory_selection_popup(bool);
 
