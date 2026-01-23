@@ -64,7 +64,10 @@ export component PopupAdvancedSelection inherits Rectangle {
                             spacing: 10px;
                             CheckBox {
                                 text: criterion.name;
-                                checked <=> root.criteria[idx].enabled;
+                                checked: root.criteria[idx].enabled;
+                                toggled => {
+                                    root.criteria[idx].enabled = self.checked;
+                                }
                             }
                             Button {
                                 text: criterion.ascending ? 
