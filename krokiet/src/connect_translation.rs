@@ -229,8 +229,10 @@ fn translate_items(app: &MainWindow) {
     translation.set_settings_global_settings_text(flk!("settings_global_settings").into());
     translation.set_selection_all_text(flk!("selection_all").into());
     translation.set_selection_deselect_all_text(flk!("selection_deselect_all").into());
+    translation.set_selection_invert_selection_text(flk!("selection_invert_selection").into());
     translation.set_stage_current_text(flk!("stage_current").into());
     translation.set_stage_all_text(flk!("stage_all").into());
+
     translation.set_subsettings_text(flk!("subsettings").into());
     translation.set_subsettings_images_hash_size_text(flk!("subsettings_images_hash_size").into());
     translation.set_subsettings_images_resize_algorithm_text(flk!("subsettings_images_resize_algorithm").into());
