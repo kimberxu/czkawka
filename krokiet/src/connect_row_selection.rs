@@ -120,6 +120,7 @@ pub(crate) fn connect_row_selections(app: &MainWindow) {
     initialize_selection_struct();
 
     selection::connect_select_all_rows(app); // CTRL + A
+    selection::connect_reset_selection(app);
     selection::reverse_single_unique_item(app); // LMB
     selection::reverse_checked_on_selection(app); // Space
     selection::reverse_selection_on_specific_item(app); // CTRL + LMB
@@ -217,7 +218,7 @@ mod opener {
 mod selection {
     use super::{
         Callabler, ComponentHandle, GuiState, MainWindow, Model, get_write_selection_lock, reverse_selection_of_item_with_id, row_select_items_with_shift,
-        rows_deselect_all_by_mode, rows_reverse_checked_selection, rows_select_all_by_mode, trace,
+        rows_deselect_all_by_mode, rows_reverse_checked_selection, rows_select_all_by_mode, trace, reset_selection,
     };
     use crate::connect_row_selection::checker::change_number_of_enabled_items;
 
@@ -235,6 +236,14 @@ mod selection {
             if let Some(new_model) = rows_select_all_by_mode(selection, &model) {
                 active_tab.set_tool_model(&app, new_model);
             }
+        });
+    }
+
+    pub(crate) fn connect_reset_selection(app: &MainWindow) {
+        let a = app.as_weak();
+        app.global::<Callabler>().on_reset_selection(move |active_tab| {
+            let app = a.upgrade().expect("Failed to upgrade app :(");
+            reset_selection(&app, active_tab, true);
         });
     }
 
