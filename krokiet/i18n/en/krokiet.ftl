@@ -363,6 +363,13 @@ advanced_select_include_subdirs = Include Subdirectories
 advanced_select_btn_other = Select duplicates in OTHER directories
 advanced_select_btn_this = Select duplicates in THIS directory
 advanced_select_close = Close
+advanced_select_date_asc = Oldest
+advanced_select_date_desc = Newest
+advanced_select_size_asc = Smallest
+advanced_select_size_desc = Biggest
+advanced_select_len_asc = Shortest
+advanced_select_len_desc = Longest
+
 
 # Directory Selection Popup
 directory_select_title_other = Select duplicates in OTHER directories:

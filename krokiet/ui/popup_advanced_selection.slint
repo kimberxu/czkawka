@@ -26,9 +26,10 @@ export component PopupAdvancedSelection inherits Rectangle {
     popup_window := PopupWindow {
         width: root.popup_width;
         height: root.popup_height;
-        close-policy: PopupClosePolicy.close-on-click-outside;
+        // close-policy: PopupClosePolicy.close-on-click-outside; // Removed for persistence
 
         Rectangle {
+
             background: ColorPalette.popup_background;
             border-radius: 5px;
             border-width: 1px;
@@ -60,12 +61,22 @@ export component PopupAdvancedSelection inherits Rectangle {
                                     }
                                 }
                                 Button {
-                                    text: criterion.ascending ? Translations.advanced_select_asc : Translations.advanced_select_desc;
+                                    text: criterion.ascending ? 
+                                        (criterion.id == 0 || criterion.id == 1 ? Translations.advanced_select_date_asc :
+                                         criterion.id == 2 ? Translations.advanced_select_size_asc :
+                                         criterion.id == 3 || criterion.id == 4 ? Translations.advanced_select_len_asc : 
+                                         Translations.advanced_select_asc)
+                                        : 
+                                        (criterion.id == 0 || criterion.id == 1 ? Translations.advanced_select_date_desc :
+                                         criterion.id == 2 ? Translations.advanced_select_size_desc :
+                                         criterion.id == 3 || criterion.id == 4 ? Translations.advanced_select_len_desc : 
+                                         Translations.advanced_select_desc);
                                     clicked => {
                                         criterion.ascending = !criterion.ascending;
                                     }
                                 }
                                 Button {
+
                                     text: "↑";
                                     enabled: idx > 0;
                                     clicked => {
@@ -85,13 +96,26 @@ export component PopupAdvancedSelection inherits Rectangle {
                                 }
                             }
                             
+                            HorizontalLayout {
+                                spacing: 10px;
+                                Button {
+                                    text: Translations.selection_deselect_all_text;
+                                    clicked => { Callabler.reset_selection(GuiState.active_tab); }
+                                }
+                                Button {
+                                    text: Translations.selection_invert_selection_text;
+                                    clicked => { Callabler.row_reverse_checked_selection(); }
+                                }
+                            }
+
                             Button {
                                 text: Translations.advanced_select_button_select;
                                 clicked => {
                                     Callabler.select_advanced_group(root.criteria);
-                                    root.close_popup();
+                                    // root.close_popup(); // Keep open
                                 }
                             }
+
                         }
                     }
                     Tab {

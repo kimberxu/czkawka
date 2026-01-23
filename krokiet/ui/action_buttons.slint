@@ -126,19 +126,8 @@ export component ActionButtons inherits HorizontalLayout {
         }
     }
 
-    advanced_select_button := Button {
-        visible: lists_enabled;
-        height: parent.height;
-        enabled: base_buttons_may_be_available && self.visible;
-        text: self.visible && Settings.show_only_icons ? "" : "Adv."; // Translations.advanced_select_button_text
-        icon: @image-url("../icons/krokiet_select.svg"); // Reuse select icon for now
-        colorize-icon: true;
-        clicked => {
-            show_advanced_select_popup();
-        }
-    }
-
     move_button := Button {
+
 
         visible: lists_enabled;
         height: parent.height;
@@ -244,7 +233,20 @@ export component ActionButtons inherits HorizontalLayout {
         }
     }
 
+    advanced_select_button := Button {
+        visible: lists_enabled;
+        height: parent.height;
+        enabled: base_buttons_may_be_available && self.visible;
+        text: self.visible && Settings.show_only_icons ? "" : Translations.advanced_select_button;
+        icon: @image-url("../icons/krokiet_select.svg"); // Reuse select icon for now
+        colorize-icon: true;
+        clicked => {
+            show_advanced_select_popup();
+        }
+    }
+
     Rectangle {
+
         horizontal-stretch: 0.5;
     }
 

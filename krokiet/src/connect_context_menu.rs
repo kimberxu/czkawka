@@ -179,9 +179,13 @@ fn connect_copy_path(app: &MainWindow) {
     app.global::<Callabler>().on_copy_path(move |idx| {
         let app = a.upgrade().unwrap();
         if let Some(path) = get_path_from_idx(&app, idx as usize) {
+            let path = Path::new(&path);
+            let parent = path.parent().unwrap_or(path);
+            let parent_str = parent.to_string_lossy().to_string();
+
             match Clipboard::new() {
                 Ok(mut clipboard) => {
-                    if let Err(e) = clipboard.set_text(path) {
+                    if let Err(e) = clipboard.set_text(parent_str) {
                         eprintln!("Failed to copy to clipboard: {}", e);
                     }
                 }
@@ -190,6 +194,7 @@ fn connect_copy_path(app: &MainWindow) {
         }
     });
 }
+
 
 fn connect_select_tree_request(app: &MainWindow) {
     let a = app.as_weak();
@@ -260,6 +265,10 @@ fn select_by_path(app: &MainWindow, filter_path: &str, select_inside: bool) {
     
     let mut checked_count_change = 0i64;
     let row_count = model.row_count();
+
+    // Normalize filter path
+    let filter_path = filter_path.replace('\\', "/");
+    let filter_path = filter_path.trim_end_matches('/');
     
     for i in 0..row_count {
         if let Some(mut row) = model.row_data(i) {
@@ -268,8 +277,17 @@ fn select_by_path(app: &MainWindow, filter_path: &str, select_inside: bool) {
             }
             
             let path = row.val_str.iter().nth(path_idx).unwrap_or_default();
+            // Path in model is usually the directory containing the file.
+            let row_path = path.replace('\\', "/");
+            let row_path = row_path.trim_end_matches('/');
             
-            let is_inside = path.starts_with(filter_path);
+            let is_inside = if row_path == filter_path {
+                true
+            } else if row_path.starts_with(&filter_path) {
+                row_path.as_bytes().get(filter_path.len()) == Some(&b'/')
+            } else {
+                false
+            };
             
             let should_check = if select_inside {
                 is_inside
@@ -289,3 +307,4 @@ fn select_by_path(app: &MainWindow, filter_path: &str, select_inside: bool) {
         change_number_of_enabled_items(app, active_tab, checked_count_change);
     }
 }
+

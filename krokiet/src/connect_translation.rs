@@ -391,6 +391,12 @@ fn translate_items(app: &MainWindow) {
     translation.set_advanced_select_btn_other(flk!("advanced_select_btn_other").into());
     translation.set_advanced_select_btn_this(flk!("advanced_select_btn_this").into());
     translation.set_advanced_select_close(flk!("advanced_select_close").into());
+    translation.set_advanced_select_date_asc(flk!("advanced_select_date_asc").into());
+    translation.set_advanced_select_date_desc(flk!("advanced_select_date_desc").into());
+    translation.set_advanced_select_size_asc(flk!("advanced_select_size_asc").into());
+    translation.set_advanced_select_size_desc(flk!("advanced_select_size_desc").into());
+    translation.set_advanced_select_len_asc(flk!("advanced_select_len_asc").into());
+    translation.set_advanced_select_len_desc(flk!("advanced_select_len_desc").into());
 
     let tools_model: [(SharedString, ActiveTab); TOOLS_NUMBER] = [
         (flk!("tool_duplicate_files").into(), ActiveTab::DuplicateFiles),

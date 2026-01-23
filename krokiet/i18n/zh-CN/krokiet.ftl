@@ -304,8 +304,9 @@ softlink_confirmation_text = 您确定要为所选项目创建软链接（符号
 
 # Context Menu
 context_menu_open_path = 打开文件路径
-context_menu_copy_path = 复制文件路径
+context_menu_copy_path = 复制所在目录
 context_menu_select_tree = 选中该目录树中与其它文件重复的文件...
+
 context_menu_select_other = 选中其它目录中与该目录树重复的文件...
 
 # Advanced Selection Popup
@@ -328,6 +329,13 @@ advanced_select_include_subdirs = 包含子目录
 advanced_select_btn_other = 选中【其它】目录中的重复文件
 advanced_select_btn_this = 选中【此】目录中的重复文件
 advanced_select_close = 关闭
+advanced_select_date_asc = 最旧
+advanced_select_date_desc = 最新
+advanced_select_size_asc = 最小
+advanced_select_size_desc = 最大
+advanced_select_len_asc = 最短
+advanced_select_len_desc = 最长
+
 
 # Directory Selection Popup
 directory_select_title_other = 选择其它目录中的重复文件:

@@ -48,12 +48,19 @@ fn select_by_path(app: &MainWindow, filter_path: &str, include_subdirs: bool, se
             let row_path = row_path.trim_end_matches('/');
 
             let is_match = if include_subdirs {
-                // Check if row_path starts with filter_path
-                row_path.starts_with(&filter_path)
+                // Check if row_path starts with filter_path and is a true subdirectory
+                if row_path == filter_path {
+                    true
+                } else if row_path.starts_with(&filter_path) {
+                    row_path.as_bytes().get(filter_path.len()) == Some(&b'/')
+                } else {
+                    false
+                }
             } else {
                 // Exact match of directory
                 row_path == filter_path
             };
+
 
             let should_check = if select_inside {
                 is_match
