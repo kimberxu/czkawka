@@ -262,24 +262,56 @@ fn select_by_path(app: &MainWindow, filter_path: &str, select_inside: bool) {
     let active_tab = app.global::<GuiState>().get_active_tab();
     let model = active_tab.get_tool_model(app);
     let path_idx = active_tab.get_str_path_idx();
+    let is_header_mode = active_tab.get_is_header_mode();
     
+    // If not in header mode (no groups), we can't safely apply "select other" logic without risking deleting everything.
+    // Assuming this tool is only for duplicates/similar which have groups.
+    if !is_header_mode {
+        return;
+    }
+
     let mut checked_count_change = 0i64;
     let row_count = model.row_count();
+    let mut old_data = model.iter().collect::<Vec<_>>();
 
     // Normalize filter path
     let filter_path = filter_path.replace('\\', "/");
-    let filter_path = filter_path.trim_end_matches('/');
+    let filter_path = if cfg!(target_os = "windows") {
+        filter_path.trim_end_matches('/').to_lowercase()
+    } else {
+        filter_path.trim_end_matches('/').to_string()
+    };
     
-    for i in 0..row_count {
-        if let Some(mut row) = model.row_data(i) {
-            if row.header_row {
-                continue;
-            }
-            
-            let path = row.val_str.iter().nth(path_idx).unwrap_or_default();
-            // Path in model is usually the directory containing the file.
+    // Find groups
+    let mut headers_idx = Vec::new();
+    for (idx, item) in old_data.iter().enumerate() {
+        if item.header_row {
+            headers_idx.push(idx);
+        }
+    }
+    headers_idx.push(row_count);
+
+    for i in 0..(headers_idx.len() - 1) {
+        let start = headers_idx[i] + 1;
+        let end = headers_idx[i + 1];
+        
+        if start >= end {
+            continue;
+        }
+
+        // Check if group has ANY file inside filter_path
+        let mut group_has_inside = false;
+        let mut indices_inside = Vec::new();
+        let mut indices_outside = Vec::new();
+
+        for idx in start..end {
+            let path = old_data[idx].val_str.iter().nth(path_idx).unwrap_or_default();
             let row_path = path.replace('\\', "/");
-            let row_path = row_path.trim_end_matches('/');
+            let row_path = if cfg!(target_os = "windows") {
+                row_path.trim_end_matches('/').to_lowercase()
+            } else {
+                row_path.trim_end_matches('/').to_string()
+            };
             
             let is_inside = if row_path == filter_path {
                 true
@@ -288,22 +320,68 @@ fn select_by_path(app: &MainWindow, filter_path: &str, select_inside: bool) {
             } else {
                 false
             };
+
             
-            let should_check = if select_inside {
-                is_inside
+            let is_inside = if row_path == filter_path {
+                true
+            } else if row_path.starts_with(&filter_path) {
+                row_path.as_bytes().get(filter_path.len()) == Some(&b'/')
             } else {
-                !is_inside
+                false
             };
-            
-            if should_check && !row.checked {
-                row.checked = true;
-                model.set_row_data(i, row);
-                checked_count_change += 1;
+
+
+            if is_inside {
+                group_has_inside = true;
+                indices_inside.push(idx);
+            } else {
+                indices_outside.push(idx);
+            }
+        }
+
+        // Apply logic
+        if select_inside {
+            // "Select duplicates in THIS directory"
+            // Check inside, Uncheck outside (usually we want to keep one, so maybe Uncheck outside is redundant if we assume user wants to delete inside?)
+            // "Select" usually means "Mark for deletion".
+            // So "Select duplicates in THIS directory" -> Delete files in THIS directory.
+            for idx in indices_inside {
+                if !old_data[idx].checked {
+                    old_data[idx].checked = true;
+                    checked_count_change += 1;
+                }
+            }
+            // Optional: Uncheck outside? Or leave them? Czkawka usually unchecks others to ensure we only delete what is asked.
+            for idx in indices_outside {
+                if old_data[idx].checked {
+                    old_data[idx].checked = false;
+                    checked_count_change -= 1;
+                }
+            }
+        } else {
+            // "Select duplicates in OTHER directories" (Select Other)
+            // Goal: Keep files in THIS directory, delete others.
+            // Safety: Only apply if the group HAS a file in THIS directory.
+            if group_has_inside {
+                for idx in indices_outside {
+                    if !old_data[idx].checked {
+                        old_data[idx].checked = true;
+                        checked_count_change += 1;
+                    }
+                }
+                for idx in indices_inside {
+                    if old_data[idx].checked {
+                        old_data[idx].checked = false;
+                        checked_count_change -= 1;
+                    }
+                }
             }
         }
     }
     
-    if checked_count_change > 0 {
+    if checked_count_change != 0 {
+        let new_model = Rc::new(VecModel::from(old_data));
+        active_tab.set_tool_model(app, new_model.into());
         change_number_of_enabled_items(app, active_tab, checked_count_change);
     }
 }

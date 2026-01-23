@@ -8,8 +8,9 @@ export component ContextMenu inherits Rectangle {
     in property <int> selected_index: -1;
     callback close_request();
 
-    width: 300px; // Slightly wider for translations
+    width: 400px; // Wider for translations
     height: show_directory_options ? 140px : 70px;
+
 
     background: ColorPalette.popup_background;
     border-radius: 4px;

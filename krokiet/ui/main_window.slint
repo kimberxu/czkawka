@@ -355,15 +355,9 @@ export component MainWindow inherits Window {
         y: parent.y + (parent.height - self.popup_height) / 2.0;
     }
 
-    advanced_select_popup_window := PopupAdvancedSelection {
-        height: root.height;
-        width: root.width;
-        
-        x: parent.x + (root.width - self.popup_width) / 2.0;
-        y: parent.y + (parent.height - self.popup_height) / 2.0;
-    }
-
     scan_ended(scan_text) => {
+
+
 
         text_summary_text = scan_text;
         root.scanning = false;
@@ -423,4 +417,10 @@ export component MainWindow inherits Window {
         directory_selection_popup_window.is_other = is_other;
         directory_selection_popup_window.show_popup();
     }
+
+    advanced_select_popup_window := PopupAdvancedSelection {
+        x: 0;
+        y: 0;
+    }
 }
+

@@ -23,32 +23,57 @@ fn select_by_path(app: &MainWindow, filter_path: &str, include_subdirs: bool, se
     let active_tab = app.global::<GuiState>().get_active_tab();
     let model = active_tab.get_tool_model(app);
     let path_idx = active_tab.get_str_path_idx();
-    let name_idx = active_tab.get_str_name_idx();
+    let is_header_mode = active_tab.get_is_header_mode();
+
+    // Requires groups (header mode) for safe "select other" logic
+    if !is_header_mode {
+        return;
+    }
 
     let mut checked_count_change = 0i64;
     let row_count = model.row_count();
+    let mut old_data = model.iter().collect::<Vec<_>>();
     
-    // Normalize filter path for comparison (basic)
-    // We assume filter_path comes from LineEdit and might use / or \
-    // Rust Path handling would be better but we operate on strings here.
+    // Normalize filter path
     let filter_path = filter_path.replace('\\', "/");
-    let filter_path = filter_path.trim_end_matches('/');
+    let filter_path = if cfg!(target_os = "windows") {
+        filter_path.trim_end_matches('/').to_lowercase()
+    } else {
+        filter_path.trim_end_matches('/').to_string()
+    };
 
-    for i in 0..row_count {
-        if let Some(mut row) = model.row_data(i) {
-            if row.header_row {
-                continue;
-            }
-            
-            let path = row.val_str.iter().nth(path_idx).unwrap_or_default();
-            // let name = row.val_str.iter().nth(name_idx).cloned().unwrap_or_default();
-            
-            // Path in model is usually the directory containing the file.
+    // Find groups
+    let mut headers_idx = Vec::new();
+    for (idx, item) in old_data.iter().enumerate() {
+        if item.header_row {
+            headers_idx.push(idx);
+        }
+    }
+    headers_idx.push(row_count);
+
+    for i in 0..(headers_idx.len() - 1) {
+        let start = headers_idx[i] + 1;
+        let end = headers_idx[i + 1];
+        
+        if start >= end {
+            continue;
+        }
+
+        // Check group content
+        let mut group_has_match = false;
+        let mut indices_match = Vec::new();
+        let mut indices_not_match = Vec::new();
+
+        for idx in start..end {
+            let path = old_data[idx].val_str.iter().nth(path_idx).unwrap_or_default();
             let row_path = path.replace('\\', "/");
-            let row_path = row_path.trim_end_matches('/');
+            let row_path = if cfg!(target_os = "windows") {
+                row_path.trim_end_matches('/').to_lowercase()
+            } else {
+                row_path.trim_end_matches('/').to_string()
+            };
 
             let is_match = if include_subdirs {
-                // Check if row_path starts with filter_path and is a true subdirectory
                 if row_path == filter_path {
                     true
                 } else if row_path.starts_with(&filter_path) {
@@ -57,33 +82,58 @@ fn select_by_path(app: &MainWindow, filter_path: &str, include_subdirs: bool, se
                     false
                 }
             } else {
-                // Exact match of directory
                 row_path == filter_path
             };
 
-
-            let should_check = if select_inside {
-                is_match
+            if is_match {
+                group_has_match = true;
+                indices_match.push(idx);
             } else {
-                !is_match
-            };
+                indices_not_match.push(idx);
+            }
+        }
 
-            if should_check != row.checked {
-                row.checked = should_check;
-                model.set_row_data(i, row);
-                if should_check {
+        if select_inside {
+            // Select Match (Delete inside)
+            for idx in indices_match {
+                if !old_data[idx].checked {
+                    old_data[idx].checked = true;
                     checked_count_change += 1;
-                } else {
+                }
+            }
+            for idx in indices_not_match {
+                if old_data[idx].checked {
+                    old_data[idx].checked = false;
                     checked_count_change -= 1;
+                }
+            }
+        } else {
+            // Select Other (Delete outside, Keep inside)
+            // SAFETY: Only if we have a match inside to keep!
+            if group_has_match {
+                for idx in indices_not_match {
+                    if !old_data[idx].checked {
+                        old_data[idx].checked = true;
+                        checked_count_change += 1;
+                    }
+                }
+                for idx in indices_match {
+                    if old_data[idx].checked {
+                        old_data[idx].checked = false;
+                        checked_count_change -= 1;
+                    }
                 }
             }
         }
     }
     
     if checked_count_change != 0 {
+        let new_model = Rc::new(VecModel::from(old_data));
+        active_tab.set_tool_model(app, new_model.into());
         change_number_of_enabled_items(app, active_tab, checked_count_change);
     }
 }
+
 
 fn connect_select_advanced_group(app: &MainWindow) {
     let a = app.as_weak();

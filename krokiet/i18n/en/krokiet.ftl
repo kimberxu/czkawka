@@ -339,9 +339,10 @@ softlink_confirmation_text = Are you sure you want to create softlinks (symlinks
 
 # Context Menu
 context_menu_open_path = Open File Path
-context_menu_copy_path = Copy File Path
+context_menu_copy_path = Copy Directory Path
 context_menu_select_tree = Select duplicates in tree...
 context_menu_select_other = Select duplicates in other...
+
 
 # Advanced Selection Popup
 advanced_select_button = Advanced Selection

@@ -9,8 +9,9 @@ export component PopupAdvancedSelection inherits Rectangle {
     callback show_popup();
     callback close_popup();
     
-    out property <length> popup_width: 500px;
-    out property <length> popup_height: 500px;
+    in-out property <bool> visible: false;
+    in-out property <length> popup_width: 500px;
+    in-out property <length> popup_height: 500px;
 
     in-out property <[AdvancedSelectionCriterion]> criteria: [
         { name: Translations.advanced_select_criteria_mod_date, enabled: false, ascending: true, id: 0 },
@@ -23,144 +24,151 @@ export component PopupAdvancedSelection inherits Rectangle {
     in-out property <string> directory_path;
     in-out property <bool> include_subdirs: true;
 
-    popup_window := PopupWindow {
+    // Overlay background
+    width: 100%;
+    height: 100%;
+    background: #00000080; // Semi-transparent dim
+    visible: root.visible;
+
+    // Block clicks on overlay from passing through
+    TouchArea {}
+
+    Rectangle {
         width: root.popup_width;
         height: root.popup_height;
-        // close-policy: PopupClosePolicy.close-on-click-outside; // Removed for persistence
+        background: ColorPalette.popup_background;
+        border-radius: 5px;
+        border-width: 1px;
+        border-color: ColorPalette.text_color;
 
-        Rectangle {
+        // Block clicks on content from passing through
+        TouchArea {}
 
-            background: ColorPalette.popup_background;
-            border-radius: 5px;
-            border-width: 1px;
-            border-color: ColorPalette.text_color;
+        VerticalBox {
+            padding: 10px;
+            spacing: 10px;
 
-            VerticalBox {
-                padding: 10px;
-                spacing: 10px;
+            Text {
+                text: Translations.advanced_select_title;
+                font-size: 16px;
+                horizontal-alignment: center;
+            }
 
-                Text {
-                    text: Translations.advanced_select_title;
-                    font-size: 16px;
-                    horizontal-alignment: center;
-                }
-
-                TabWidget {
-                    Tab {
-                        title: Translations.advanced_select_group_tab;
-                        VerticalBox {
-                            Text { text: Translations.advanced_select_group_criteria; }
-                            
-                            for criterion[idx] in criteria : HorizontalLayout {
-                                spacing: 10px;
-                                CheckBox {
-                                    text: criterion.name;
-                                    checked: criterion.enabled;
-                                    toggled => {
-                                        criterion.enabled = self.checked;
-                                    }
-                                }
-                                Button {
-                                    text: criterion.ascending ? 
-                                        (criterion.id == 0 || criterion.id == 1 ? Translations.advanced_select_date_asc :
-                                         criterion.id == 2 ? Translations.advanced_select_size_asc :
-                                         criterion.id == 3 || criterion.id == 4 ? Translations.advanced_select_len_asc : 
-                                         Translations.advanced_select_asc)
-                                        : 
-                                        (criterion.id == 0 || criterion.id == 1 ? Translations.advanced_select_date_desc :
-                                         criterion.id == 2 ? Translations.advanced_select_size_desc :
-                                         criterion.id == 3 || criterion.id == 4 ? Translations.advanced_select_len_desc : 
-                                         Translations.advanced_select_desc);
-                                    clicked => {
-                                        criterion.ascending = !criterion.ascending;
-                                    }
-                                }
-                                Button {
-
-                                    text: "↑";
-                                    enabled: idx > 0;
-                                    clicked => {
-                                        let temp = root.criteria[idx - 1];
-                                        root.criteria[idx - 1] = root.criteria[idx];
-                                        root.criteria[idx] = temp;
-                                    }
-                                }
-                                Button {
-                                    text: "↓";
-                                    enabled: idx < root.criteria.length - 1;
-                                    clicked => {
-                                        let temp = root.criteria[idx + 1];
-                                        root.criteria[idx + 1] = root.criteria[idx];
-                                        root.criteria[idx] = temp;
-                                    }
-                                }
-                            }
-                            
-                            HorizontalLayout {
-                                spacing: 10px;
-                                Button {
-                                    text: Translations.selection_deselect_all_text;
-                                    clicked => { Callabler.reset_selection(GuiState.active_tab); }
-                                }
-                                Button {
-                                    text: Translations.selection_invert_selection_text;
-                                    clicked => { Callabler.row_reverse_checked_selection(); }
-                                }
-                            }
-
-                            Button {
-                                text: Translations.advanced_select_button_select;
-                                clicked => {
-                                    Callabler.select_advanced_group(root.criteria);
-                                    // root.close_popup(); // Keep open
-                                }
-                            }
-
-                        }
-                    }
-                    Tab {
-                        title: Translations.advanced_select_directory_tab;
-                        VerticalBox {
-                            Text { text: Translations.advanced_select_directory_path; }
-                            LineEdit {
-                                text <=> root.directory_path;
-                                placeholder-text: Translations.advanced_select_directory_placeholder;
-                            }
+            TabWidget {
+                Tab {
+                    title: Translations.advanced_select_group_tab;
+                    VerticalBox {
+                        Text { text: Translations.advanced_select_group_criteria; }
+                        
+                        for criterion[idx] in criteria : HorizontalLayout {
+                            spacing: 10px;
                             CheckBox {
-                                text: Translations.advanced_select_include_subdirs;
-                                checked <=> root.include_subdirs;
-                            }
-                            
-                            Button {
-                                text: Translations.advanced_select_btn_other;
-                                clicked => {
-                                    Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, true); // true = other
-                                    root.close_popup();
+                                text: criterion.name;
+                                checked: criterion.enabled;
+                                toggled => {
+                                    criterion.enabled = self.checked;
                                 }
                             }
                             Button {
-                                text: Translations.advanced_select_btn_this;
+                                text: criterion.ascending ? 
+                                    (criterion.id == 0 || criterion.id == 1 ? Translations.advanced_select_date_asc :
+                                     criterion.id == 2 ? Translations.advanced_select_size_asc :
+                                     criterion.id == 3 || criterion.id == 4 ? Translations.advanced_select_len_asc : 
+                                     Translations.advanced_select_asc)
+                                    : 
+                                    (criterion.id == 0 || criterion.id == 1 ? Translations.advanced_select_date_desc :
+                                     criterion.id == 2 ? Translations.advanced_select_size_desc :
+                                     criterion.id == 3 || criterion.id == 4 ? Translations.advanced_select_len_desc : 
+                                     Translations.advanced_select_desc);
                                 clicked => {
-                                    Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, false); // false = this
-                                    root.close_popup();
+                                    criterion.ascending = !criterion.ascending;
                                 }
+                            }
+                            Button {
+
+                                text: "↑";
+                                enabled: idx > 0;
+                                clicked => {
+                                    let temp = root.criteria[idx - 1];
+                                    root.criteria[idx - 1] = root.criteria[idx];
+                                    root.criteria[idx] = temp;
+                                }
+                            }
+                            Button {
+                                text: "↓";
+                                enabled: idx < root.criteria.length - 1;
+                                clicked => {
+                                    let temp = root.criteria[idx + 1];
+                                    root.criteria[idx + 1] = root.criteria[idx];
+                                    root.criteria[idx] = temp;
+                                }
+                            }
+                        }
+                        
+                        HorizontalLayout {
+                            spacing: 10px;
+                            Button {
+                                text: Translations.selection_deselect_all_text;
+                                clicked => { Callabler.reset_selection(GuiState.active_tab); }
+                            }
+                            Button {
+                                text: Translations.selection_invert_selection_text;
+                                clicked => { Callabler.row_reverse_checked_selection(); }
+                            }
+                        }
+
+                        Button {
+                            text: Translations.advanced_select_button_select;
+                            clicked => {
+                                Callabler.select_advanced_group(root.criteria);
+                                // root.close_popup(); // Keep open
+                            }
+                        }
+
+                    }
+                }
+                Tab {
+                    title: Translations.advanced_select_directory_tab;
+                    VerticalBox {
+                        Text { text: Translations.advanced_select_directory_path; }
+                        LineEdit {
+                            text <=> root.directory_path;
+                            placeholder-text: Translations.advanced_select_directory_placeholder;
+                        }
+                        CheckBox {
+                            text: Translations.advanced_select_include_subdirs;
+                            checked <=> root.include_subdirs;
+                        }
+                        
+                        Button {
+                            text: Translations.advanced_select_btn_other;
+                            clicked => {
+                                Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, true); // true = other
+                                root.close_popup();
+                            }
+                        }
+                        Button {
+                            text: Translations.advanced_select_btn_this;
+                            clicked => {
+                                Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, false); // false = this
+                                root.close_popup();
                             }
                         }
                     }
                 }
-                
-                Button {
-                    text: Translations.advanced_select_close;
-                    clicked => { root.close_popup(); }
-                }
+            }
+            
+            Button {
+                text: Translations.advanced_select_close;
+                clicked => { root.close_popup(); }
             }
         }
     }
 
     show_popup() => {
-        popup_window.show();
+        root.visible = true;
     }
     close_popup() => {
-        popup_window.close();
+        root.visible = false;
     }
 }
