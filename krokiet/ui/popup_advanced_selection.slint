@@ -2,7 +2,7 @@ import { Button, CheckBox, LineEdit, ScrollView, StandardListView, VerticalBox, 
 import { ColorPalette } from "color_palette.slint";
 import { GuiState } from "gui_state.slint";
 import { Callabler } from "callabler.slint";
-import { AdvancedSelectionCriterion } from "common.slint";
+import { ActiveTab, SelectMode, AdvancedSelectionCriterion } from "common.slint";
 import { Translations } from "translations.slint";
 
 export component PopupAdvancedSelection inherits Rectangle {
@@ -85,22 +85,25 @@ export component PopupAdvancedSelection inherits Rectangle {
                                 }
                             }
                             Button {
-
                                 text: "↑";
                                 enabled: idx > 0;
                                 clicked => {
-                                    let temp = root.criteria[idx - 1];
-                                    root.criteria[idx - 1] = root.criteria[idx];
-                                    root.criteria[idx] = temp;
+                                    let c = root.criteria;
+                                    let temp = c[idx - 1];
+                                    c[idx - 1] = c[idx];
+                                    c[idx] = temp;
+                                    root.criteria = c;
                                 }
                             }
                             Button {
                                 text: "↓";
                                 enabled: idx < root.criteria.length - 1;
                                 clicked => {
-                                    let temp = root.criteria[idx + 1];
-                                    root.criteria[idx + 1] = root.criteria[idx];
-                                    root.criteria[idx] = temp;
+                                    let c = root.criteria;
+                                    let temp = c[idx + 1];
+                                    c[idx + 1] = c[idx];
+                                    c[idx] = temp;
+                                    root.criteria = c;
                                 }
                             }
                         }
@@ -153,14 +156,14 @@ export component PopupAdvancedSelection inherits Rectangle {
                         HorizontalLayout {
                             spacing: 10px;
                             Button {
-                                text: "Uncheck Other"; // TODO: Translation
+                                text: Translations.advanced_select_btn_uncheck_other;
                                 clicked => {
                                     Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, 3); // 3 = uncheck other
                                     root.close_popup();
                                 }
                             }
                             Button {
-                                text: "Uncheck This"; // TODO: Translation
+                                text: Translations.advanced_select_btn_uncheck_this;
                                 clicked => {
                                     Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, 2); // 2 = uncheck this
                                     root.close_popup();
@@ -175,11 +178,11 @@ export component PopupAdvancedSelection inherits Rectangle {
                 spacing: 10px;
                 Button {
                     text: Translations.selection_deselect_all_text;
-                    clicked => { Callabler.reset_selection(GuiState.active_tab); }
+                    clicked => { Callabler.select_items(SelectMode.UnselectAll); }
                 }
                 Button {
                     text: Translations.selection_invert_selection_text;
-                    clicked => { Callabler.row_reverse_checked_selection(); }
+                    clicked => { Callabler.select_items(SelectMode.InvertSelection); }
                 }
             }
 
