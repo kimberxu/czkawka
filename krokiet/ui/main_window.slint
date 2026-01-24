@@ -23,6 +23,7 @@ import { PopupReencodeVideo } from "popup_optimize.slint";
 import { PopupCleanExif } from "popup_clean_exif.slint";
 import { PopupDirectorySelection } from "popup_directory_selection.slint";
 import { PopupAdvancedSelection } from "popup_advanced_selection.slint";
+import { PopupCleanCache } from "popup_clean_cache.slint";
 import { ToolSettings } from "tool_settings.slint";
 
 import { Translations } from "translations.slint";
@@ -112,6 +113,10 @@ export component MainWindow inherits Window {
                         bad_extensions_model <=> root.bad_extensions_model;
                         exif_remover_model <=> root.exif_remover_model;
                         video_optimizer_model <=> root.video_optimizer_model;
+
+                        show_clean_cache_popup() => {
+                            clean_cache_popup_window.show_popup();
+                        }
                     }
 
                     preview_or_tool_settings := Rectangle {
@@ -290,6 +295,22 @@ export component MainWindow inherits Window {
 
         action_confirmed() => {
             Callabler.clean_exif_items();
+        }
+    }
+
+    clean_cache_popup_window := PopupCleanCache {
+        height: root.height;
+        width: root.width;
+
+        x: parent.x + (root.width - self.popup_width) / 2.0;
+        y: parent.y + (parent.height - self.popup_height) / 2.0;
+
+        start_cleaning() => {
+            Callabler.start_cache_cleaning();
+        }
+
+        stop_cleaning() => {
+            Callabler.stop_cache_cleaning();
         }
     }
 
