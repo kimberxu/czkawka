@@ -154,6 +154,7 @@ impl BrokenFiles {
         ];
 
         let mut command = Command::new("ffprobe");
+        crate::common::process_utils::disable_windows_console_window(&mut command);
         command.arg("-v").arg("error").arg(&file_entry.path);
 
         match run_command_interruptible(command, stop_flag) {
@@ -204,6 +205,7 @@ impl BrokenFiles {
         ];
 
         let mut command = Command::new("ffmpeg");
+        crate::common::process_utils::disable_windows_console_window(&mut command);
         command
             .arg("-v")
             .arg("error")
