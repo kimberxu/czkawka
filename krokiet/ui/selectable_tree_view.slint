@@ -142,9 +142,7 @@ export component SelectableTableView inherits Rectangle {
                     }
                     pointer-event(event) => {
                         if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up) {
-                            root.last_selected_idx = idx;
-                            Callabler.row_reverse_single_unique_item(idx);
-                            root.show_context_menu(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y, idx);
+                            Callabler.row_open_parent_item_with_index(idx);
                         } else if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up) {
 
                             if (event.modifiers.control) {
@@ -286,6 +284,10 @@ export component SelectableTableView inherits Rectangle {
 
         if (event.text == " ") {
             Callabler.row_reverse_checked_selection();
+        } else if (event.text == "p") {
+             if (last_selected_idx != -1) {
+                 root.show_context_menu(root.absolute-position.x + root.width / 2, root.absolute-position.y + root.height / 2, last_selected_idx);
+             }
         } else if (event.text == "\n") {
            if (last_selected_idx != -1 && contains_data(last_selected_idx)) {
                 Callabler.row_open_item_with_index(last_selected_idx);
