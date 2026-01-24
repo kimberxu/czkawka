@@ -5,7 +5,6 @@ use arboard::Clipboard;
 use slint::{ComponentHandle, Model, SharedString, VecModel};
 
 use crate::connect_advanced_selection::select_by_path;
-use crate::connect_row_selection::checker::change_number_of_enabled_items;
 use crate::{Callabler, GuiState, MainWindow};
 
 pub(crate) fn connect_context_menu(app: &MainWindow) {
