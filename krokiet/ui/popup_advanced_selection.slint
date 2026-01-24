@@ -88,22 +88,18 @@ export component PopupAdvancedSelection inherits Rectangle {
                                 text: "↑";
                                 enabled: idx > 0;
                                 clicked => {
-                                    let c = root.criteria;
-                                    let temp = c[idx - 1];
-                                    c[idx - 1] = c[idx];
-                                    c[idx] = temp;
-                                    root.criteria = c;
+                                    let temp = root.criteria[idx - 1];
+                                    root.criteria[idx - 1] = root.criteria[idx];
+                                    root.criteria[idx] = temp;
                                 }
                             }
                             Button {
                                 text: "↓";
                                 enabled: idx < root.criteria.length - 1;
                                 clicked => {
-                                    let c = root.criteria;
-                                    let temp = c[idx + 1];
-                                    c[idx + 1] = c[idx];
-                                    c[idx] = temp;
-                                    root.criteria = c;
+                                    let temp = root.criteria[idx + 1];
+                                    root.criteria[idx + 1] = root.criteria[idx];
+                                    root.criteria[idx] = temp;
                                 }
                             }
                         }
