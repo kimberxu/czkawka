@@ -5,7 +5,7 @@ use arboard::Clipboard;
 use slint::{ComponentHandle, Model, SharedString, VecModel};
 
 use crate::connect_row_selection::checker::change_number_of_enabled_items;
-use crate::{ActiveTab, Callabler, GuiState, MainWindow};
+use crate::{Callabler, GuiState, MainWindow};
 
 pub(crate) fn connect_context_menu(app: &MainWindow) {
     let a = app.as_weak();
@@ -312,15 +312,6 @@ fn select_by_path(app: &MainWindow, filter_path: &str, select_inside: bool) {
             } else {
                 row_path.trim_end_matches('/').to_string()
             };
-            
-            let is_inside = if row_path == filter_path {
-                true
-            } else if row_path.starts_with(&filter_path) {
-                row_path.as_bytes().get(filter_path.len()) == Some(&b'/')
-            } else {
-                false
-            };
-
             
             let is_inside = if row_path == filter_path {
                 true

@@ -1,9 +1,9 @@
 use std::cmp::Ordering;
 use std::rc::Rc;
-use slint::{ComponentHandle, Model, ModelRc, VecModel};
-use crate::{ActiveTab, AdvancedSelectionCriterion, Callabler, GuiState, MainWindow, MainListModel};
+use slint::{ComponentHandle, Model, VecModel};
+use crate::{AdvancedSelectionCriterion, Callabler, GuiState, MainWindow};
 use crate::connect_row_selection::checker::change_number_of_enabled_items;
-use crate::common::{connect_i32_into_u64, split_u64_into_i32s};
+use crate::common::connect_i32_into_u64;
 
 pub fn connect_advanced_selection(app: &MainWindow) {
     connect_select_advanced_custom_path(app);
