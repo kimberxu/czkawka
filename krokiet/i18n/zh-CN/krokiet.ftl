@@ -329,6 +329,7 @@ advanced_select_include_subdirs = 包含子目录
 advanced_select_btn_other = 选中【其它】目录中的重复文件
 advanced_select_btn_this = 选中【此】目录中的重复文件
 advanced_select_close = 关闭
+advanced_select_uncheck_baseline = 同时取消勾选基准文件
 advanced_select_date_asc = 最旧
 advanced_select_date_desc = 最新
 advanced_select_size_asc = 最小

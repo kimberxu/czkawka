@@ -94,17 +94,19 @@ pub fn select_by_path(app: &MainWindow, filter_path: &str, include_subdirs: bool
 
         match mode {
             0 => { // Select This (Check Match, Uncheck Not Match)
-                for idx in indices_match {
-                    if !old_data[idx].checked {
-                        old_data[idx].checked = true;
-                        checked_count_change += 1;
+                if group_has_match {
+                    for idx in indices_match {
+                        if !old_data[idx].checked {
+                            old_data[idx].checked = true;
+                            checked_count_change += 1;
+                        }
                     }
-                }
-                if uncheck_baseline {
-                    for idx in indices_not_match {
-                        if old_data[idx].checked {
-                            old_data[idx].checked = false;
-                            checked_count_change -= 1;
+                    if uncheck_baseline {
+                        for idx in indices_not_match {
+                            if old_data[idx].checked {
+                                old_data[idx].checked = false;
+                                checked_count_change -= 1;
+                            }
                         }
                     }
                 }
@@ -125,22 +127,6 @@ pub fn select_by_path(app: &MainWindow, filter_path: &str, include_subdirs: bool
                                 checked_count_change -= 1;
                             }
                         }
-                    }
-                }
-            },
-            2 => { // Uncheck This (Uncheck Match)
-                for idx in indices_match {
-                    if old_data[idx].checked {
-                        old_data[idx].checked = false;
-                        checked_count_change -= 1;
-                    }
-                }
-            },
-            3 => { // Uncheck Other (Uncheck Not Match)
-                for idx in indices_not_match {
-                    if old_data[idx].checked {
-                        old_data[idx].checked = false;
-                        checked_count_change -= 1;
                     }
                 }
             },

@@ -383,6 +383,7 @@ advanced_select_directory_placeholder = /path/to/folder
 advanced_select_include_subdirs = Include Subdirectories
 advanced_select_btn_other = Select duplicates in OTHER directories
 advanced_select_btn_this = Select duplicates in THIS directory
+advanced_select_uncheck_baseline = Uncheck corresponding files
 advanced_select_close = Close
 advanced_select_date_asc = Oldest
 advanced_select_date_desc = Newest

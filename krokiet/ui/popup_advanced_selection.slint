@@ -133,7 +133,7 @@ export component PopupAdvancedSelection inherits Rectangle {
                             checked <=> root.include_subdirs;
                         }
                         CheckBox {
-                            text: "Uncheck corresponding files";
+                            text: Translations.advanced_select_uncheck_baseline;
                             checked <=> root.uncheck_baseline;
                         }
                         
@@ -154,23 +154,7 @@ export component PopupAdvancedSelection inherits Rectangle {
                                 }
                             }
                         }
-                        HorizontalLayout {
-                            spacing: 10px;
-                            Button {
-                                text: Translations.advanced_select_btn_uncheck_other;
-                                clicked => {
-                                    Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, 3, false); // 3 = uncheck other
-                                    root.close_popup();
-                                }
-                            }
-                            Button {
-                                text: Translations.advanced_select_btn_uncheck_this;
-                                clicked => {
-                                    Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, 2, false); // 2 = uncheck this
-                                    root.close_popup();
-                                }
-                            }
-                        }
+                        // Removed unused buttons per request
                     }
                 }
             }
