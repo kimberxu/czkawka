@@ -25,7 +25,7 @@ export component ContextMenu inherits Rectangle {
             text: Translations.context_menu_open_path;
             clicked => {
                 Callabler.row_reverse_single_unique_item(root.selected_index);
-                Callabler.row_open_parent_of_selected_item();
+                Callabler.row_open_parent_item_with_index(root.selected_index);
                 root.close_request();
             }
         }
