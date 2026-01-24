@@ -207,7 +207,7 @@ fn connect_select_tree_request(app: &MainWindow) {
             
             for ancestor in path.ancestors() {
                 if let Some(s) = ancestor.to_str() {
-                    if !s.is_empty() {
+                    if !s.is_empty() && Path::new(s).is_dir() {
                          ancestors.push(SharedString::from(s));
                     }
                 }
@@ -229,7 +229,7 @@ fn connect_select_other_request(app: &MainWindow) {
             let mut ancestors: Vec<SharedString> = Vec::new();
             for ancestor in path.ancestors() {
                 if let Some(s) = ancestor.to_str() {
-                    if !s.is_empty() {
+                    if !s.is_empty() && Path::new(s).is_dir() {
                          ancestors.push(SharedString::from(s));
                     }
                 }
