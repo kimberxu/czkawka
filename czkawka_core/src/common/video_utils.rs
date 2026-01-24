@@ -4,9 +4,6 @@ use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
-use std::path::Path;
-use std::process::Command;
-
 use blake3::Hasher;
 use image::{GenericImage, RgbImage};
 use serde::{Deserialize, Serialize};
