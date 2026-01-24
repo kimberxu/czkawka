@@ -50,6 +50,8 @@ pub fn select_by_path(app: &MainWindow, filter_path: &str, include_subdirs: bool
     }
     headers_idx.push(row_count);
 
+    let mut model_changed = false;
+
     for i in 0..(headers_idx.len() - 1) {
         let start = headers_idx[i] + 1;
         let end = headers_idx[i + 1];
@@ -99,6 +101,7 @@ pub fn select_by_path(app: &MainWindow, filter_path: &str, include_subdirs: bool
                         if !old_data[idx].checked {
                             old_data[idx].checked = true;
                             checked_count_change += 1;
+                            model_changed = true;
                         }
                     }
                     if uncheck_baseline {
@@ -106,6 +109,7 @@ pub fn select_by_path(app: &MainWindow, filter_path: &str, include_subdirs: bool
                             if old_data[idx].checked {
                                 old_data[idx].checked = false;
                                 checked_count_change -= 1;
+                                model_changed = true;
                             }
                         }
                     }
@@ -118,6 +122,7 @@ pub fn select_by_path(app: &MainWindow, filter_path: &str, include_subdirs: bool
                         if !old_data[idx].checked {
                             old_data[idx].checked = true;
                             checked_count_change += 1;
+                            model_changed = true;
                         }
                     }
                     if uncheck_baseline {
@@ -125,6 +130,7 @@ pub fn select_by_path(app: &MainWindow, filter_path: &str, include_subdirs: bool
                             if old_data[idx].checked {
                                 old_data[idx].checked = false;
                                 checked_count_change -= 1;
+                                model_changed = true;
                             }
                         }
                     }
@@ -134,7 +140,7 @@ pub fn select_by_path(app: &MainWindow, filter_path: &str, include_subdirs: bool
         }
     }
     
-    if checked_count_change != 0 {
+    if model_changed {
         let new_model = Rc::new(VecModel::from(old_data));
         active_tab.set_tool_model(app, new_model.into());
         change_number_of_enabled_items(app, active_tab, checked_count_change);
