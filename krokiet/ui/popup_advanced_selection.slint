@@ -23,6 +23,7 @@ export component PopupAdvancedSelection inherits Rectangle {
     
     in-out property <string> directory_path;
     in-out property <bool> include_subdirs: true;
+    in-out property <bool> uncheck_baseline: true;
 
     // Overlay background
     width: 100%;
@@ -131,20 +132,24 @@ export component PopupAdvancedSelection inherits Rectangle {
                             text: Translations.advanced_select_include_subdirs;
                             checked <=> root.include_subdirs;
                         }
+                        CheckBox {
+                            text: "Uncheck corresponding files";
+                            checked <=> root.uncheck_baseline;
+                        }
                         
                         HorizontalLayout {
                             spacing: 10px;
                             Button {
                                 text: Translations.advanced_select_btn_other;
                                 clicked => {
-                                    Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, 1); // 1 = select other
+                                    Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, 1, root.uncheck_baseline); // 1 = select other
                                     root.close_popup();
                                 }
                             }
                             Button {
                                 text: Translations.advanced_select_btn_this;
                                 clicked => {
-                                    Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, 0); // 0 = select this
+                                    Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, 0, root.uncheck_baseline); // 0 = select this
                                     root.close_popup();
                                 }
                             }
@@ -154,14 +159,14 @@ export component PopupAdvancedSelection inherits Rectangle {
                             Button {
                                 text: Translations.advanced_select_btn_uncheck_other;
                                 clicked => {
-                                    Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, 3); // 3 = uncheck other
+                                    Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, 3, false); // 3 = uncheck other
                                     root.close_popup();
                                 }
                             }
                             Button {
                                 text: Translations.advanced_select_btn_uncheck_this;
                                 clicked => {
-                                    Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, 2); // 2 = uncheck this
+                                    Callabler.select_advanced_custom_path(root.directory_path, root.include_subdirs, 2, false); // 2 = uncheck this
                                     root.close_popup();
                                 }
                             }

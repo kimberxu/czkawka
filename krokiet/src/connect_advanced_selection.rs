@@ -12,13 +12,13 @@ pub fn connect_advanced_selection(app: &MainWindow) {
 
 fn connect_select_advanced_custom_path(app: &MainWindow) {
     let a = app.as_weak();
-    app.global::<Callabler>().on_select_advanced_custom_path(move |path, include_subdirs, mode| {
+    app.global::<Callabler>().on_select_advanced_custom_path(move |path, include_subdirs, mode, uncheck_baseline| {
         let app = a.upgrade().unwrap();
-        select_by_path(&app, &path, include_subdirs, mode);
+        select_by_path(&app, &path, include_subdirs, mode, uncheck_baseline);
     });
 }
 
-fn select_by_path(app: &MainWindow, filter_path: &str, include_subdirs: bool, mode: i32) {
+pub fn select_by_path(app: &MainWindow, filter_path: &str, include_subdirs: bool, mode: i32, uncheck_baseline: bool) {
     let active_tab = app.global::<GuiState>().get_active_tab();
     let model = active_tab.get_tool_model(app);
     let path_idx = active_tab.get_str_path_idx();
@@ -100,10 +100,12 @@ fn select_by_path(app: &MainWindow, filter_path: &str, include_subdirs: bool, mo
                         checked_count_change += 1;
                     }
                 }
-                for idx in indices_not_match {
-                    if old_data[idx].checked {
-                        old_data[idx].checked = false;
-                        checked_count_change -= 1;
+                if uncheck_baseline {
+                    for idx in indices_not_match {
+                        if old_data[idx].checked {
+                            old_data[idx].checked = false;
+                            checked_count_change -= 1;
+                        }
                     }
                 }
             },
@@ -116,10 +118,12 @@ fn select_by_path(app: &MainWindow, filter_path: &str, include_subdirs: bool, mo
                             checked_count_change += 1;
                         }
                     }
-                    for idx in indices_match {
-                        if old_data[idx].checked {
-                            old_data[idx].checked = false;
-                            checked_count_change -= 1;
+                    if uncheck_baseline {
+                        for idx in indices_match {
+                            if old_data[idx].checked {
+                                old_data[idx].checked = false;
+                                checked_count_change -= 1;
+                            }
                         }
                     }
                 }
