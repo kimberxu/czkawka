@@ -4,8 +4,10 @@ use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
+use std::path::Path;
+use std::process::Command;
+
 use blake3::Hasher;
-use ffprobe::ffprobe;
 use image::{GenericImage, RgbImage};
 use serde::{Deserialize, Serialize};
 
@@ -14,6 +16,55 @@ use crate::common::process_utils::disable_windows_console_window;
 use crate::common::progress_stop_handler::check_if_stop_received;
 
 pub const VIDEO_THUMBNAILS_SUBFOLDER: &str = "video_thumbnails";
+
+#[derive(Debug, Deserialize)]
+struct FfProbeOutput {
+    format: FfProbeFormat,
+    #[serde(default)]
+    streams: Vec<FfProbeStream>,
+}
+
+#[derive(Debug, Deserialize)]
+struct FfProbeFormat {
+    duration: Option<String>,
+    bit_rate: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct FfProbeStream {
+    codec_type: Option<String>,
+    codec_name: Option<String>,
+    bit_rate: Option<String>,
+    width: Option<i64>,
+    height: Option<i64>,
+    #[serde(default)]
+    avg_frame_rate: String,
+    #[serde(default)]
+    r_frame_rate: String,
+}
+
+fn run_ffprobe(path: &Path) -> Result<FfProbeOutput, String> {
+    let mut command = Command::new("ffprobe");
+    disable_windows_console_window(&mut command);
+
+    let output = command
+        .arg("-v")
+        .arg("quiet")
+        .arg("-print_format")
+        .arg("json")
+        .arg("-show_format")
+        .arg("-show_streams")
+        .arg(path)
+        .output()
+        .map_err(|e| format!("Failed to run ffprobe: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("ffprobe failed with status: {} - {}", output.status, stderr));
+    }
+
+    serde_json::from_slice(&output.stdout).map_err(|e| format!("Failed to parse ffprobe output: {e}"))
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct VideoMetadata {
@@ -27,7 +78,7 @@ pub struct VideoMetadata {
 
 impl VideoMetadata {
     pub fn from_path(path: &Path) -> Result<Self, String> {
-        let info = ffprobe(path).map_err(|e| format!("Failed to read video properties: {e}"))?;
+        let info = run_ffprobe(path).map_err(|e| format!("Failed to read video properties: {e}"))?;
 
         let mut metadata = Self::default();
 
