@@ -20,6 +20,8 @@ jobs:
         shell: bash
         run: |
           echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          safe_ref_name="${GITHUB_REF_NAME//\//-}"
+          echo "safe_ref_name=${safe_ref_name}" >> $GITHUB_OUTPUT
 
       # 1. 编译 GUI - 仅构建兼容性最好的 OpenGL 版本 (带 Software 回退)
       # 对齐 windows.yml 的 Rust 版本 (1.92.0)，但不开启 LTO 以加快手动构建速度
@@ -34,5 +36,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: Krokiet_${{ github.ref_name }}_${{ steps.vars.outputs.sha_short }}
+          name: Krokiet_${{ steps.vars.outputs.safe_ref_name }}_${{ steps.vars.outputs.sha_short }}
           path: target/release/krokiet_opengl.exe
