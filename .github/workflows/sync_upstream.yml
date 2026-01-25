@@ -1,0 +1,79 @@
+name: Upstream Sync
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # 每天运行一次
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  sync_latest_from_upstream:
+    runs-on: ubuntu-latest
+    name: Sync latest commits from upstream repo
+
+    steps:
+    - name: Checkout target repo
+      uses: actions/checkout@v4
+      with:
+        ref: master
+        fetch-depth: 0 # 必须拉取完整历史才能进行 rebase/merge 操作
+
+    - name: Sync upstream changes
+      id: sync
+      shell: bash
+      run: |
+        # 配置 git 用户信息 (显示为上游作者，但提交者是 Action Bot)
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # 添加上游仓库
+        git remote add upstream https://github.com/qarmin/czkawka.git
+        git fetch upstream master
+
+        # 检查是否有更新
+        UPSTREAM_COMMIT=$(git rev-parse upstream/master)
+        CURRENT_COMMIT=$(git rev-parse HEAD)
+        
+        echo "Upstream: $UPSTREAM_COMMIT"
+        echo "Current: $CURRENT_COMMIT"
+
+        # 注意：因为我们修改了 commit hash，简单的比较可能不准确
+        # 这里我们的逻辑是：只要上游最新的 commit 我们本地没有（指作为 parent），就同步
+        
+        # 强制重置到上游最新状态
+        echo "🔄 Resetting to upstream/master..."
+        git reset --hard upstream/master
+        
+        # 关键步骤：从我们要覆盖的 origin/master 中把“传家宝”文件捞回来
+        # 1. 手动构建的 Workflow
+        # 2. 本同步 Workflow (如果不捞回来，下次就没法自动同步了！)
+        
+        echo "♻️ Restoring custom workflows..."
+        # 注意：这里我们假设 origin/master 是上次我们 force push 的状态，里面有这两个文件
+        # 如果是第一次运行，可能需要在本地先 setup 好
+        
+        git checkout origin/master -- ".github/workflows/Build Krokiet Manual.yml"
+        git checkout origin/master -- ".github/workflows/sync_upstream.yml"
+        
+        # 检查是否真的把文件拿回来了
+        if [ -f ".github/workflows/sync_upstream.yml" ]; then
+            echo "✅ Workflows restored."
+        else
+            echo "❌ Failed to restore workflows. Aborting to prevent data loss."
+            exit 1
+        fi
+
+        # 将捞回来的文件加入暂存区
+        git add ".github/workflows/Build Krokiet Manual.yml"
+        git add ".github/workflows/sync_upstream.yml"
+        
+        # 检查是否有变更需要提交（比如上游也改了 workflow 导致冲突，或者其实根本没变）
+        # 但因为我们是 amend 到一个新的上游 commit，所以本质上只要上游变了，我们就要 amend
+        
+        echo "🕵️ Amending upstream commit to include custom workflows..."
+        git commit --amend --no-edit
+        
+        echo "🚀 Force pushing to origin..."
+        git push origin master --force

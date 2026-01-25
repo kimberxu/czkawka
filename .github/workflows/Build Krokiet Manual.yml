@@ -1,0 +1,40 @@
+name: Build Krokiet Manual
+
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-all:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.92.0
+
+      - name: Get short SHA
+        id: vars
+        shell: bash
+        run: |
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          safe_ref_name="${GITHUB_REF_NAME//\//-}"
+          echo "safe_ref_name=${safe_ref_name}" >> $GITHUB_OUTPUT
+
+      # 1. 编译 GUI - 仅构建兼容性最好的 OpenGL 版本 (带 Software 回退)
+      # 对齐 windows.yml 的 Rust 版本 (1.92.0)，但不开启 LTO 以加快手动构建速度
+      # 不使用 cargo-chef 和 缓存，以确保构建环境纯净，避免 broken exe 问题
+      - name: Build Krokiet (OpenGL + Software Fallback)
+        id: build-gui
+        run: |
+          cargo build --release --bin krokiet --no-default-features --features "winit_skia_opengl,winit_software"
+          mv target/release/krokiet.exe target/release/krokiet_opengl.exe
+
+      # 2. 上传产物
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: Krokiet_${{ steps.vars.outputs.safe_ref_name }}_${{ steps.vars.outputs.sha_short }}
+          path: target/release/krokiet_opengl.exe
