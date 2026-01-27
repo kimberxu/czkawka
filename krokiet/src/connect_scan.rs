@@ -18,9 +18,10 @@ mod video_optimizer;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::thread;
 
 use chrono::{Local, TimeZone, Utc};
-use crossbeam_channel::Sender;
+use crossbeam_channel::{Sender, bounded};
 use czkawka_core::common::progress_data::ProgressData;
 use czkawka_core::common::tool_data::CommonData;
 use czkawka_core::helpers::messages::MessageLimit;
@@ -74,6 +75,41 @@ pub(crate) fn connect_scan_button(
     let a = app.as_weak();
     app.on_scan_starting(move |active_tab| {
         let app = a.upgrade().expect("Failed to upgrade app :(");
+
+        let app_weak = a.clone();
+        let start_time = std::time::Instant::now();
+        thread::Builder::new()
+            .name("timer_thread".into())
+            .spawn(move || {
+                let mut scanning = true;
+                while scanning {
+                    thread::sleep(std::time::Duration::from_secs(1));
+                    let (tx, rx) = bounded(1);
+                    let _ = app_weak.upgrade_in_event_loop(move |app| {
+                        let is_scanning = app.get_scanning();
+                        if is_scanning {
+                            let elapsed = start_time.elapsed();
+                            let elapsed_secs = elapsed.as_secs();
+                            let hours = elapsed_secs / 3600;
+                            let minutes = (elapsed_secs % 3600) / 60;
+                            let seconds = elapsed_secs % 60;
+                            let time_str = format!("{:02}:{:02}:{:02}", hours, minutes, seconds);
+                            let searching_text = flk!("searching");
+                            let text = format!("{} - {}", searching_text, time_str);
+                            app.set_text_summary_text(text.into());
+                        }
+                        let _ = tx.send(is_scanning);
+                    });
+                    if let Ok(is_scanning) = rx.recv() {
+                        if !is_scanning {
+                            scanning = false;
+                        }
+                    } else {
+                        scanning = false;
+                    }
+                }
+            })
+            .unwrap();
 
         if !check_if_there_are_any_included_folders(&app) {
             app.invoke_scan_ended(flk!("rust_no_included_paths").into());
