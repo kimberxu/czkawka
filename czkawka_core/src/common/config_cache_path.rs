@@ -2,7 +2,7 @@ use std::fs::{File, OpenOptions};
 use std::path::PathBuf;
 use std::{env, fs};
 
-use directories_next::ProjectDirs;
+// use directories_next::ProjectDirs; 
 use log::{info, warn};
 use once_cell::sync::OnceCell;
 
@@ -59,6 +59,7 @@ fn resolve_folder(env_var: &str, default_folder: Option<PathBuf>, name: &'static
         }
     }
 }
+
 #[cfg(test)]
 pub fn set_config_cache_path_test(cache_path: PathBuf, config_path: PathBuf) {
     CONFIG_CACHE_PATH
@@ -79,12 +80,12 @@ pub struct ConfigCachePathSetResult {
 }
 
 // This function must be executed, to not crash, when gathering config/cache path
-pub fn set_config_cache_path(cache_name: &'static str, config_name: &'static str) -> ConfigCachePathSetResult {
-    // By default, such folders are used:
-    // Lin: /home/username/.config/czkawka
-    // LinFlatpak: /home/username/.var/app/com.github.qarmin.czkawka/config/czkawka
-    // Win: C:\Users\Username\AppData\Roaming\Qarmin\Czkawka\config
-    // Mac: /Users/Username/Library/Application Support/pl.Qarmin.Czkawka
+// 注意：参数 cache_name 和 config_name 在便携模式下可能不再通过 ProjectDirs 使用，
+// 但为了保持函数签名兼容性，这里保留了它们。
+pub fn set_config_cache_path(_cache_name: &'static str, _config_name: &'static str) -> ConfigCachePathSetResult {
+    
+    // 【修改说明】：不再使用 ProjectDirs 获取系统路径，改为获取程序同级目录
+    // Old implementation used ProjectDirs::from(...)
 
     let mut infos = Vec::new();
     let mut warnings = Vec::new();
@@ -92,12 +93,31 @@ pub fn set_config_cache_path(cache_name: &'static str, config_name: &'static str
     let config_folder_env = env::var("CZKAWKA_CONFIG_PATH").unwrap_or_default().trim().to_string();
     let cache_folder_env = env::var("CZKAWKA_CACHE_PATH").unwrap_or_default().trim().to_string();
 
-    let default_cache_folder = ProjectDirs::from("pl", "Qarmin", cache_name).map(|proj_dirs| proj_dirs.cache_dir().to_path_buf());
-    let default_config_folder = ProjectDirs::from("pl", "Qarmin", config_name).map(|proj_dirs| proj_dirs.config_dir().to_path_buf());
+    // 【新增逻辑】：获取当前可执行文件所在的目录
+    let (default_config_folder, default_cache_folder) = match env::current_exe() {
+        Ok(exe_path) => {
+            // 获取可执行文件的父目录
+            let exe_dir = exe_path.parent().unwrap_or(&exe_path);
+            
+            // 拼接 config 和 cache 文件夹
+            let config_path = exe_dir.join("config");
+            let cache_path = exe_dir.join("cache");
 
+            infos.push(format!("Using portable paths next to executable: {}", exe_dir.to_string_lossy()));
+
+            (Some(config_path), Some(cache_path))
+        },
+        Err(e) => {
+            warnings.push(format!("Failed to get current executable path: {}. Config/Cache cannot be determined.", e));
+            (None, None)
+        }
+    };
+
+    // 检查默认路径是否存在（用于后续返回状态）
     let default_config_path_exists = default_config_folder.as_ref().is_some_and(|t| t.exists());
     let default_cache_path_exists = default_cache_folder.as_ref().is_some_and(|t| t.exists());
 
+    // 解析最终路径（如果环境变量设置了，仍优先使用环境变量，否则使用上面的同级目录）
     let config_folder = resolve_folder(&config_folder_env, default_config_folder, "Config", &mut warnings);
     let cache_folder = resolve_folder(&cache_folder_env, default_cache_folder, "Cache", &mut warnings);
 
@@ -117,6 +137,7 @@ pub fn set_config_cache_path(cache_name: &'static str, config_name: &'static str
         {
             warnings.push(flc!("core_cannot_create_cache_folder", folder = cache_folder.to_string_lossy(), reason = e.to_string()));
         }
+        
         Some(ConfigCachePath { config_folder, cache_folder })
     } else {
         warnings.push(flc!("core_cannot_set_config_cache_path"));
