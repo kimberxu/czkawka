@@ -5,7 +5,6 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
 use blake3::Hasher;
-use ffprobe::ffprobe;
 use image::{GenericImage, RgbImage};
 use serde::{Deserialize, Serialize};
 
@@ -27,7 +26,7 @@ pub struct VideoMetadata {
 
 impl VideoMetadata {
     pub fn from_path(path: &Path) -> Result<Self, String> {
-        let info = ffprobe(path).map_err(|e| format!("Failed to read video properties: {e}"))?;
+        let info = ffprobe_no_window(path)?;
 
         let mut metadata = Self::default();
 
@@ -95,6 +94,26 @@ impl VideoMetadata {
 
         Ok(metadata)
     }
+}
+
+/// Custom ffprobe wrapper that disables console window on Windows
+fn ffprobe_no_window(path: &Path) -> Result<ffprobe::FfProbe, String> {
+    let mut cmd = Command::new("ffprobe");
+    disable_windows_console_window(&mut cmd);
+
+    cmd.args(["-v", "quiet", "-show_format", "-show_streams", "-print_format", "json"])
+        .arg(path)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+
+    let output = cmd.output().map_err(|e| format!("Failed to execute ffprobe: {e}"))?;
+
+    if !output.status.success() {
+        return Err(format!("ffprobe exited with status code {}", output.status));
+    }
+
+    serde_json::from_slice::<ffprobe::FfProbe>(&output.stdout).map_err(|e| format!("Failed to parse ffprobe output: {e}"))
 }
 
 pub(crate) fn extract_frame_ffmpeg(video_path: &Path, timestamp: f32, max_values: Option<(u32, u32)>) -> Result<RgbImage, String> {
