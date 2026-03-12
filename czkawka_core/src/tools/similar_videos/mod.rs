@@ -44,7 +44,6 @@ pub struct VideosEntry {
     pub height: Option<u32>,
     pub duration: Option<f64>,
 
-    #[serde(skip)] // Saving it to cache is bad idea, because cache can be moved to another locations
     pub thumbnail_path: Option<PathBuf>,
 }
 

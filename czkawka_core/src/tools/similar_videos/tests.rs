@@ -1,12 +1,14 @@
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
+use std::path::PathBuf;
 
 use tempfile::TempDir;
 use vid_dup_finder_lib::Cropdetect;
+use serde_json::Value;
 
 use crate::common::tool_data::CommonData;
 use crate::common::traits::Search;
-use crate::tools::similar_videos::{SimilarVideos, SimilarVideosParameters};
+use crate::tools::similar_videos::{SimilarVideos, SimilarVideosParameters, VideosEntry};
 
 // Tests are quite limited here, due to the needing of external ffmpeg libraries and video files.
 // Just tested is that searching in an empty directory works as expected - no found similar videos
@@ -29,4 +31,28 @@ fn test_similar_videos_empty_directory() {
     let info = finder.get_information();
     assert_eq!(info.number_of_duplicates, 0, "Should find no duplicates in empty directory");
     assert_eq!(info.number_of_groups, 0, "Should find no groups in empty directory");
+}
+
+#[test]
+fn test_videos_entry_serializes_thumbnail_path() {
+    let entry = VideosEntry {
+        path: PathBuf::from("video.mp4"),
+        size: 123,
+        modified_date: 0,
+        vhash: Default::default(),
+        error: String::new(),
+        fps: None,
+        codec: None,
+        bitrate: None,
+        width: None,
+        height: None,
+        duration: None,
+        thumbnail_path: Some(PathBuf::from("thumb.jpg")),
+    };
+
+    let serialized = serde_json::to_value(&entry).expect("Serialization should succeed");
+    let thumbnail_value = serialized.get("thumbnail_path");
+
+    assert!(thumbnail_value.is_some(), "thumbnail_path should be present in JSON output");
+    assert_eq!(thumbnail_value, Some(&Value::String("thumb.jpg".to_string())));
 }
