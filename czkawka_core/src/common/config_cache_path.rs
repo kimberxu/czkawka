@@ -92,8 +92,17 @@ pub fn set_config_cache_path(cache_name: &'static str, config_name: &'static str
     let config_folder_env = env::var("CZKAWKA_CONFIG_PATH").unwrap_or_default().trim().to_string();
     let cache_folder_env = env::var("CZKAWKA_CACHE_PATH").unwrap_or_default().trim().to_string();
 
-    let default_cache_folder = ProjectDirs::from("pl", "Qarmin", cache_name).map(|proj_dirs| proj_dirs.cache_dir().to_path_buf());
-    let default_config_folder = ProjectDirs::from("pl", "Qarmin", config_name).map(|proj_dirs| proj_dirs.config_dir().to_path_buf());
+    let mut default_cache_folder = ProjectDirs::from("pl", "Qarmin", cache_name).map(|proj_dirs| proj_dirs.cache_dir().to_path_buf());
+    let mut default_config_folder = ProjectDirs::from("pl", "Qarmin", config_name).map(|proj_dirs| proj_dirs.config_dir().to_path_buf());
+
+    if let Ok(mut exe_path) = env::current_exe() {
+        exe_path.pop();
+        exe_path.push("czkawka_config");
+        if exe_path.is_dir() {
+            default_config_folder = Some(exe_path.clone());
+            default_cache_folder = Some(exe_path);
+        }
+    }
 
     let default_config_path_exists = default_config_folder.as_ref().is_some_and(|t| t.exists());
     let default_cache_path_exists = default_cache_folder.as_ref().is_some_and(|t| t.exists());
@@ -187,5 +196,45 @@ pub fn print_infos_and_warnings(infos: Vec<String>, warnings: Vec<String>) {
     }
     for warning in warnings {
         warn!("{warning}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{env, fs};
+
+    #[test]
+    fn test_set_config_cache_path_prefers_portable_dir() {
+        let exe_path = env::current_exe().expect("Failed to get current exe path");
+        let exe_dir = exe_path.parent().expect("Exe path should have parent");
+        let portable_dir = exe_dir.join("czkawka_config");
+
+        let _ = fs::remove_dir_all(&portable_dir);
+        fs::create_dir_all(&portable_dir).expect("Failed to create portable config dir");
+
+        let old_config = env::var("CZKAWKA_CONFIG_PATH").ok();
+        let old_cache = env::var("CZKAWKA_CACHE_PATH").ok();
+        env::set_var("CZKAWKA_CONFIG_PATH", "");
+        env::set_var("CZKAWKA_CACHE_PATH", "");
+
+        let _ = set_config_cache_path("Czkawka", "Czkawka");
+        let config_cache_path = get_config_cache_path().expect("Config cache path should be set");
+
+        assert_eq!(config_cache_path.config_folder, portable_dir);
+        assert_eq!(config_cache_path.cache_folder, portable_dir);
+
+        if let Some(value) = old_config {
+            env::set_var("CZKAWKA_CONFIG_PATH", value);
+        } else {
+            env::remove_var("CZKAWKA_CONFIG_PATH");
+        }
+        if let Some(value) = old_cache {
+            env::set_var("CZKAWKA_CACHE_PATH", value);
+        } else {
+            env::remove_var("CZKAWKA_CACHE_PATH");
+        }
+
+        let _ = fs::remove_dir_all(&portable_dir);
     }
 }
