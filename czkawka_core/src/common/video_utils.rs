@@ -155,8 +155,7 @@ pub fn generate_thumbnail(
     thumbnail_video_percentage_from_start: u8,
     generate_grid_instead_of_single: bool,
     thumbnail_grid_tiles_per_side: u8,
-    generate_thumbnails: bool,
-) -> Result<Option<PathBuf>, String> {
+) -> Result<PathBuf, String> {
     let mut hasher = Hasher::new();
 
     if generate_grid_instead_of_single {
@@ -176,11 +175,7 @@ pub fn generate_thumbnail(
 
     if thumbnail_path.exists() {
         let _ = filetime::set_file_mtime(&thumbnail_path, filetime::FileTime::now());
-        return Ok(Some(thumbnail_path));
-    }
-
-    if !generate_thumbnails {
-        return Ok(None);
+        return Ok(thumbnail_path);
     }
 
     let seek_time = duration.map_or(5.0, |d| d * (thumbnail_video_percentage_from_start as f64) / 100.0);
@@ -250,5 +245,5 @@ pub fn generate_thumbnail(
             }
         }
     }
-    Ok(Some(thumbnail_path))
+    Ok(thumbnail_path)
 }

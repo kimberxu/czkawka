@@ -197,11 +197,15 @@ impl VideoOptimizer {
         WorkContinueStatus::Continue
     }
 
-    #[fun_time(message = "create_transcode_thumbnails", level = "debug")]
-    fn create_transcode_thumbnails(&mut self, progress_sender: Option<&Sender<ProgressData>>, stop_flag: &Arc<AtomicBool>, params: &VideoTranscodeParams) -> WorkContinueStatus {
-        let progress_handler = prepare_thread_handler_common(
-            progress_sender,
-            CurrentStage::VideoOptimizerCreatingThumbnails,
+#[fun_time(message = "create_transcode_thumbnails", level = "debug")]
+fn create_transcode_thumbnails(&mut self, progress_sender: Option<&Sender<ProgressData>>, stop_flag: &Arc<AtomicBool>, params: &VideoTranscodeParams) -> WorkContinueStatus {
+    if !params.generate_thumbnails {
+        return WorkContinueStatus::Continue;
+    }
+
+    let progress_handler = prepare_thread_handler_common(
+        progress_sender,
+        CurrentStage::VideoOptimizerCreatingThumbnails,
             self.video_transcode_result_entries.len(),
             self.get_test_type(),
             0,
@@ -239,14 +243,9 @@ impl VideoOptimizer {
                     thumbnail_video_percentage_from_start,
                     generate_grid_instead_of_single,
                     thumbnail_grid_tiles_per_side,
-                    params.generate_thumbnails,
                 ) {
-                    Ok(Some(thumbnail_path)) => {
+                    Ok(thumbnail_path) => {
                         entry.thumbnail_path = Some(thumbnail_path);
-                        progress_handler.increase_items(1);
-                        Some(None)
-                    }
-                    Ok(None) => {
                         progress_handler.increase_items(1);
                         Some(None)
                     }
@@ -270,11 +269,15 @@ impl VideoOptimizer {
         WorkContinueStatus::Continue
     }
 
-    #[fun_time(message = "create_crop_thumbnails", level = "debug")]
-    fn create_crop_thumbnails(&mut self, progress_sender: Option<&Sender<ProgressData>>, stop_flag: &Arc<AtomicBool>, params: &VideoCropParams) -> WorkContinueStatus {
-        let progress_handler = prepare_thread_handler_common(
-            progress_sender,
-            CurrentStage::VideoOptimizerCreatingThumbnails,
+#[fun_time(message = "create_crop_thumbnails", level = "debug")]
+fn create_crop_thumbnails(&mut self, progress_sender: Option<&Sender<ProgressData>>, stop_flag: &Arc<AtomicBool>, params: &VideoCropParams) -> WorkContinueStatus {
+    if !params.generate_thumbnails {
+        return WorkContinueStatus::Continue;
+    }
+
+    let progress_handler = prepare_thread_handler_common(
+        progress_sender,
+        CurrentStage::VideoOptimizerCreatingThumbnails,
             self.video_crop_result_entries.len(),
             self.get_test_type(),
             self.video_crop_result_entries.iter().map(|e| e.size).sum(),
@@ -312,16 +315,11 @@ impl VideoOptimizer {
                     thumbnail_video_percentage_from_start,
                     generate_grid_instead_of_single,
                     thumbnail_grid_tiles_per_side,
-                    params.generate_thumbnails,
                 );
 
                 match result {
-                    Ok(Some(thumbnail_path)) => {
+                    Ok(thumbnail_path) => {
                         entry.thumbnail_path = Some(thumbnail_path);
-                        progress_handler.increase_items(1);
-                        Some(None)
-                    }
-                    Ok(None) => {
                         progress_handler.increase_items(1);
                         Some(None)
                     }
