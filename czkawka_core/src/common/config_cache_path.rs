@@ -80,7 +80,8 @@ pub struct ConfigCachePathSetResult {
 
 // This function must be executed, to not crash, when gathering config/cache path
 pub fn set_config_cache_path(cache_name: &'static str, config_name: &'static str) -> ConfigCachePathSetResult {
-    // By default, such folders are used:
+    // By default, exe_dir/config and exe_dir/cache are used if possible.
+    // If not possible, such folders are used:
     // Lin: /home/username/.config/czkawka
     // LinFlatpak: /home/username/.var/app/com.github.qarmin.czkawka/config/czkawka
     // Win: C:\Users\Username\AppData\Roaming\Qarmin\Czkawka\config
@@ -92,23 +93,79 @@ pub fn set_config_cache_path(cache_name: &'static str, config_name: &'static str
     let config_folder_env = env::var("CZKAWKA_CONFIG_PATH").unwrap_or_default().trim().to_string();
     let cache_folder_env = env::var("CZKAWKA_CACHE_PATH").unwrap_or_default().trim().to_string();
 
-    let mut default_cache_folder = ProjectDirs::from("pl", "Qarmin", cache_name).map(|proj_dirs| proj_dirs.cache_dir().to_path_buf());
-    let mut default_config_folder = ProjectDirs::from("pl", "Qarmin", config_name).map(|proj_dirs| proj_dirs.config_dir().to_path_buf());
-
-    if let Ok(mut exe_path) = env::current_exe() {
-        exe_path.pop();
-        exe_path.push("czkawka_config");
-        if exe_path.is_dir() {
-            default_config_folder = Some(exe_path.clone());
-            default_cache_folder = Some(exe_path);
-        }
-    }
+    let default_cache_folder = ProjectDirs::from("pl", "Qarmin", cache_name).map(|proj_dirs| proj_dirs.cache_dir().to_path_buf());
+    let default_config_folder = ProjectDirs::from("pl", "Qarmin", config_name).map(|proj_dirs| proj_dirs.config_dir().to_path_buf());
 
     let default_config_path_exists = default_config_folder.as_ref().is_some_and(|t| t.exists());
     let default_cache_path_exists = default_cache_folder.as_ref().is_some_and(|t| t.exists());
 
-    let config_folder = resolve_folder(&config_folder_env, default_config_folder, "Config", &mut warnings);
-    let cache_folder = resolve_folder(&cache_folder_env, default_cache_folder, "Cache", &mut warnings);
+    let (mut config_folder, mut cache_folder) = (None, None);
+
+    if let Ok(exe_path) = env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let exe_config_folder = exe_dir.join("config");
+            let exe_cache_folder = exe_dir.join("cache");
+
+            let mut exe_folders_ok = true;
+            if let Err(e) = fs::create_dir_all(&exe_config_folder) {
+                warnings.push(format!(
+                    "Cannot create config folder \"{}\", reason {e}",
+                    exe_config_folder.to_string_lossy()
+                ));
+                exe_folders_ok = false;
+            }
+            if let Err(e) = fs::create_dir_all(&exe_cache_folder) {
+                warnings.push(format!(
+                    "Cannot create cache folder \"{}\", reason {e}",
+                    exe_cache_folder.to_string_lossy()
+                ));
+                exe_folders_ok = false;
+            }
+
+            if exe_folders_ok && !exe_config_folder.is_dir() {
+                warnings.push(format!(
+                    "Config folder \"{}\" is not a directory, falling back to other locations",
+                    exe_config_folder.to_string_lossy()
+                ));
+                exe_folders_ok = false;
+            }
+            if exe_folders_ok && !exe_cache_folder.is_dir() {
+                warnings.push(format!(
+                    "Cache folder \"{}\" is not a directory, falling back to other locations",
+                    exe_cache_folder.to_string_lossy()
+                ));
+                exe_folders_ok = false;
+            }
+
+            if exe_folders_ok {
+                match (dunce::canonicalize(&exe_config_folder), dunce::canonicalize(&exe_cache_folder)) {
+                    (Ok(config), Ok(cache)) => {
+                        config_folder = Some(config);
+                        cache_folder = Some(cache);
+                    }
+                    (config_res, cache_res) => {
+                        if let Err(_e) = config_res {
+                            warnings.push(format!(
+                                "Cannot canonicalize config folder \"{}\", falling back to other locations",
+                                exe_config_folder.to_string_lossy()
+                            ));
+                        }
+                        if let Err(_e) = cache_res {
+                            warnings.push(format!(
+                                "Cannot canonicalize cache folder \"{}\", falling back to other locations",
+                                exe_cache_folder.to_string_lossy()
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if config_folder.is_none() || cache_folder.is_none() {
+        config_folder = resolve_folder(&config_folder_env, default_config_folder, "Config", &mut warnings);
+        cache_folder = resolve_folder(&cache_folder_env, default_cache_folder, "Cache", &mut warnings);
+    }
 
     let config_cache_path = if let (Some(config_folder), Some(cache_folder)) = (config_folder, cache_folder) {
         infos.push(format!(
@@ -208,10 +265,13 @@ mod tests {
     fn test_set_config_cache_path_prefers_portable_dir() {
         let exe_path = env::current_exe().expect("Failed to get current exe path");
         let exe_dir = exe_path.parent().expect("Exe path should have parent");
-        let portable_dir = exe_dir.join("czkawka_config");
+        let config_dir = exe_dir.join("config");
+        let cache_dir = exe_dir.join("cache");
 
-        let _ = fs::remove_dir_all(&portable_dir);
-        fs::create_dir_all(&portable_dir).expect("Failed to create portable config dir");
+        let _ = fs::remove_dir_all(&config_dir);
+        let _ = fs::remove_dir_all(&cache_dir);
+        fs::create_dir_all(&config_dir).expect("Failed to create portable config dir");
+        fs::create_dir_all(&cache_dir).expect("Failed to create portable cache dir");
 
         let old_config = env::var("CZKAWKA_CONFIG_PATH").ok();
         let old_cache = env::var("CZKAWKA_CACHE_PATH").ok();
@@ -221,8 +281,8 @@ mod tests {
         let _ = set_config_cache_path("Czkawka", "Czkawka");
         let config_cache_path = get_config_cache_path().expect("Config cache path should be set");
 
-        assert_eq!(config_cache_path.config_folder, portable_dir);
-        assert_eq!(config_cache_path.cache_folder, portable_dir);
+        assert_eq!(config_cache_path.config_folder, config_dir);
+        assert_eq!(config_cache_path.cache_folder, cache_dir);
 
         if let Some(value) = old_config {
             env::set_var("CZKAWKA_CONFIG_PATH", value);
@@ -235,6 +295,7 @@ mod tests {
             env::remove_var("CZKAWKA_CACHE_PATH");
         }
 
-        let _ = fs::remove_dir_all(&portable_dir);
+        let _ = fs::remove_dir_all(&config_dir);
+        let _ = fs::remove_dir_all(&cache_dir);
     }
 }
