@@ -1,5 +1,5 @@
 use std::fs::{File, OpenOptions};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use directories_next::ProjectDirs;
@@ -88,6 +88,40 @@ fn resolve_folder(env_var: &str, default_folder: Option<PathBuf>, name: &'static
         }
     }
 }
+
+fn prepare_exe_local_dir(dir: &Path, name: &'static str, warnings: &mut Vec<String>) -> Option<PathBuf> {
+    if let Err(e) = fs::create_dir_all(dir) {
+        warnings.push(format!("Cannot create {name} folder \"{}\", reason {e}", dir.to_string_lossy()));
+        return None;
+    }
+
+    if !dir.is_dir() {
+        warnings.push(format!(
+            "{} folder \"{}\" is not a directory, falling back to other locations",
+            name.to_ascii_uppercase(),
+            dir.to_string_lossy()
+        ));
+        return None;
+    }
+
+    match dunce::canonicalize(dir) {
+        Ok(path) => Some(path),
+        Err(_e) => {
+            warnings.push(format!(
+                "Cannot canonicalize {name} folder \"{}\", falling back to other locations",
+                dir.to_string_lossy()
+            ));
+            None
+        }
+    }
+}
+
+fn resolve_exe_local_config_and_cache_dirs(exe_dir: &Path, warnings: &mut Vec<String>) -> Option<(PathBuf, PathBuf)> {
+    let config_dir = prepare_exe_local_dir(&exe_dir.join("config"), "config", warnings)?;
+    let cache_dir = prepare_exe_local_dir(&exe_dir.join("cache"), "cache", warnings)?;
+    Some((config_dir, cache_dir))
+}
+
 #[cfg(test)]
 pub fn set_config_cache_path_test(cache_path: PathBuf, config_path: PathBuf) {
     CONFIG_CACHE_PATH
@@ -109,7 +143,8 @@ pub struct ConfigCachePathSetResult {
 
 // This function must be executed, to not crash, when gathering config/cache path
 pub fn set_config_cache_path(cache_name: &'static str, config_name: &'static str) -> ConfigCachePathSetResult {
-    // By default, such folders are used:
+    // By default, exe_dir/config and exe_dir/cache are used if possible.
+    // If not possible, such folders are used:
     // Lin: /home/username/.config/czkawka
     // LinFlatpak: /home/username/.var/app/com.github.qarmin.czkawka/config/czkawka
     // Win: C:\Users\Username\AppData\Roaming\Qarmin\Czkawka\config
@@ -132,8 +167,19 @@ pub fn set_config_cache_path(cache_name: &'static str, config_name: &'static str
     let default_config_path_exists = default_config_folder.as_ref().is_some_and(|t| t.exists());
     let default_cache_path_exists = default_cache_folder.as_ref().is_some_and(|t| t.exists());
 
-    let config_folder = resolve_folder(&config_folder_env, default_config_folder, "Config", &mut warnings);
-    let cache_folder = resolve_folder(&cache_folder_env, default_cache_folder, "Cache", &mut warnings);
+    let (config_folder, cache_folder) = env::current_exe()
+        .ok()
+        .and_then(|exe_path| exe_path.parent().map(Path::to_path_buf))
+        .and_then(|exe_dir| resolve_exe_local_config_and_cache_dirs(&exe_dir, &mut warnings))
+        .map_or_else(
+            || {
+                (
+                    resolve_folder(&config_folder_env, default_config_folder, "Config", &mut warnings),
+                    resolve_folder(&cache_folder_env, default_cache_folder, "Cache", &mut warnings),
+                )
+            },
+            |(config_dir, cache_dir)| (Some(config_dir), Some(cache_dir)),
+        );
 
     let config_cache_path = if let (Some(config_folder), Some(cache_folder)) = (config_folder, cache_folder) {
         infos.push(format!(
@@ -221,5 +267,29 @@ pub fn print_infos_and_warnings(infos: Vec<String>, warnings: Vec<String>) {
     }
     for warning in warnings {
         warn!("{warning}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tempfile::TempDir;
+
+    use super::resolve_exe_local_config_and_cache_dirs;
+
+    #[test]
+    fn test_resolve_exe_local_config_and_cache_dirs_prefers_exe_siblings() {
+        let exe_dir = TempDir::new().expect("Failed to create temporary exe dir");
+        let config_dir = exe_dir.path().join("config");
+        let cache_dir = exe_dir.path().join("cache");
+        let mut warnings = Vec::new();
+
+        let (resolved_config, resolved_cache) =
+            resolve_exe_local_config_and_cache_dirs(exe_dir.path(), &mut warnings).expect("Expected exe-local config/cache dirs to resolve");
+
+        assert_eq!(resolved_config, dunce::canonicalize(&config_dir).expect("Failed to canonicalize config dir"));
+        assert_eq!(resolved_cache, dunce::canonicalize(&cache_dir).expect("Failed to canonicalize cache dir"));
+        assert!(warnings.is_empty(), "Expected no warnings, got {warnings:?}");
+        assert!(config_dir.is_dir(), "config dir should be created");
+        assert!(cache_dir.is_dir(), "cache dir should be created");
     }
 }
