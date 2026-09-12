@@ -1,0 +1,60 @@
+name: Upstream Sync
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # 每天运行一次
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  sync_latest_from_upstream:
+    runs-on: ubuntu-latest
+    name: Sync latest commits from upstream repo
+
+    steps:
+    - name: Checkout target repo
+      uses: actions/checkout@v4
+      with:
+        ref: master
+        fetch-depth: 0 
+        token: ${{ secrets.ACTION_TOKEN }} # 必须加上这一行，使用你刚才创建的细粒度 Token
+
+    - name: Sync upstream changes
+      id: sync
+      shell: bash
+      run: |
+        # Configure Git
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # Fetch upstream
+        git remote add upstream https://github.com/qarmin/czkawka.git
+        git fetch upstream master
+
+        echo "📦 Stashing custom workflows..."
+        # Backup the workflows we want to preserve
+        mkdir -p /tmp/workflows
+        cp .github/workflows/sync_upstream.yml /tmp/workflows/
+        [ -f ".github/workflows/Build_Krokiet_Manual.yml" ] && cp ".github/workflows/Build_Krokiet_Manual.yml" /tmp/workflows/
+
+        echo "🔄 Resetting to upstream/master..."
+        # Reset to upstream/master to match upstream history exactly
+        git reset --hard upstream/master
+
+        echo "✨ Restoring custom workflows..."
+        # Restore our custom workflows
+        cp /tmp/workflows/* .github/workflows/
+        
+        # Stage the files
+        git add .github/workflows/sync_upstream.yml
+        [ -f ".github/workflows/Build_Krokiet_Manual.yml" ] && git add ".github/workflows/Build_Krokiet_Manual.yml"
+        
+        echo "💾 Creating floating commit..."
+        # Create a new commit on top of upstream (Floating Commit)
+        git commit -m "chore: sync with upstream [skip ci]"
+        
+        echo "🚀 Pushing to origin..."
+        # Force push to update our fork
+        git push origin master --force
