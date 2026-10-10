@@ -1,0 +1,78 @@
+name: 🏁 Build Krokiet Manual
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  CZKAWKA_OFFICIAL_BUILD: ${{ vars.CZKAWKA_OFFICIAL_BUILD }}
+
+jobs:
+  build-windows:
+    name: Build ${{ matrix.name }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: OpenGL
+            features: "winit_skia_opengl,winit_software"
+            suffix: "skia_opengl"
+          - name: Software
+            features: "winit_software"
+            suffix: "software"
+    env:
+      RUSTFLAGS: "-C target-cpu=x86-64"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get Date and Branch info
+        id: info
+        shell: bash
+        run: |
+          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          # Get branch name, replace / and \ with _ to be safe for filenames
+          BRANCH="${GITHUB_REF_NAME}"
+          SAFE_BRANCH=$(echo "$BRANCH" | tr '/\\' '_')
+          echo "branch=$SAFE_BRANCH" >> $GITHUB_OUTPUT
+
+      - name: Setup rust version
+        run: |
+          rustup default 1.92.0
+
+      - name: Enable LTO
+        run: |
+          # Replace '#lto = ' with 'lto = ' in Cargo.toml
+          powershell -Command "(Get-Content Cargo.toml) -replace '#lto = ', 'lto = ' | Set-Content Cargo.toml"
+          # Replace '#codegen-units ' with 'codegen-units ' in Cargo.toml
+          powershell -Command "(Get-Content Cargo.toml) -replace '#codegen-units ', 'codegen-units ' | Set-Content Cargo.toml"
+          
+      - name: Compile Krokiet Release
+        run: |
+          cargo build --release --bin krokiet --no-default-features --features "${{ matrix.features }}"
+          mv target/release/krokiet.exe "krokiet_windows_${{ steps.info.outputs.branch }}_${{ steps.info.outputs.date }}_${{ matrix.suffix }}.exe"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: krokiet-windows-${{ matrix.suffix }}
+          path: krokiet_windows_*.exe
+          if-no-files-found: error
+
+  release:
+    name: Release Nightly
+    needs: build-windows
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/master' && vars.HAVE_PAT_REPOSITORY_TOKEN == '1' }}
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: krokiet-windows-*
+          merge-multiple: true
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "Nightly"
+          files: krokiet_windows_*.exe
+          token: ${{ secrets.PAT_REPOSITORY }}
